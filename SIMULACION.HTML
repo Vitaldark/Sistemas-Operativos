@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Práctica 1 — Planificador de CPU</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #f7f8fc;
+  --white:     #ffffff;
+  --border:    #e4e7f0;
+  --border2:   #cdd2e4;
+  --text:      #1e2132;
+  --text-mid:  #5a6080;
+  --text-soft: #9aa0bc;
+  --blue:      #3b5bdb;
+  --blue-lt:   #edf2ff;
+  --blue-dk:   #2f4ac0;
+  --teal:      #0c9488;
+  --teal-lt:   #f0fdfa;
+  --green:     #16a34a;
+  --green-lt:  #f0fdf4;
+  --red:       #dc2626;
+  --red-lt:    #fef2f2;
+  --amber:     #b45309;
+  --amber-lt:  #fffbeb;
+  --shadow-xs: 0 1px 2px rgba(30,33,50,0.06);
+  --shadow-sm: 0 2px 8px rgba(30,33,50,0.08), 0 1px 2px rgba(30,33,50,0.04);
+  --shadow:    0 6px 24px rgba(30,33,50,0.10), 0 2px 6px rgba(30,33,50,0.05);
+  --r:  10px;
+  --r-sm: 7px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+
+body{
+  font-family:'DM Sans',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  padding:28px 16px 64px;
+  line-height:1.5;
+}
+
+.topbar{
+  max-width:900px;margin:0 auto 28px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding-bottom:20px;border-bottom:1.5px solid var(--border);
+}
+.topbar-left h1{
+  font-family:'Sora',sans-serif;font-size:22px;font-weight:700;
+  color:var(--text);margin-bottom:2px;
+}
+.topbar-left p{font-size:13px;color:var(--text-soft);font-weight:400;}
+.course-tag{
+  background:var(--blue-lt);color:var(--blue);
+  font-size:12px;font-weight:600;padding:5px 14px;
+  border-radius:100px;border:1.5px solid #c5d3f7;
+  white-space:nowrap;
+}
+
+.layout{max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:18px;}
+
+.card{
+  background:var(--white);border:1.5px solid var(--border);
+  border-radius:var(--r);box-shadow:var(--shadow-xs);
+  transition:box-shadow .2s;overflow:hidden;
+}
+.card:hover{box-shadow:var(--shadow-sm);}
+
+.card-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:13px 18px;border-bottom:1.5px solid var(--border);
+  background:#fafbfe;
+}
+.card-title{
+  display:flex;align-items:center;gap:9px;
+  font-size:12px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.6px;color:var(--text-mid);
+}
+.step-badge{
+  width:22px;height:22px;border-radius:50%;
+  background:var(--blue);color:#fff;
+  font-size:11px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.card-body{padding:18px;}
+
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+@media(max-width:620px){.two-col{grid-template-columns:1fr;}}
+
+.policy-grid{display:flex;gap:10px;margin-bottom:14px;}
+.policy-btn{
+  flex:1;padding:14px 10px;
+  border:2px solid var(--border2);background:var(--white);
+  color:var(--text-mid);font-family:'DM Sans',sans-serif;
+  font-size:14px;font-weight:600;cursor:pointer;
+  border-radius:var(--r-sm);transition:all .15s;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+}
+.policy-btn .p-name{font-size:16px;font-weight:700;}
+.policy-btn .p-sub{font-size:11px;font-weight:400;opacity:.7;}
+.policy-btn:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-lt);}
+.policy-btn.active{
+  border-color:var(--blue);background:var(--blue);color:#fff;
+  box-shadow:0 4px 14px rgba(59,91,219,.3);
+}
+.policy-btn.active .p-sub{opacity:.85;}
+
+.policy-desc{
+  padding:11px 14px;background:var(--blue-lt);
+  border:1.5px solid #c5d3f7;border-radius:var(--r-sm);
+  font-size:13px;color:#3042a8;line-height:1.65;
+}
+
+.file-zone{
+  border:2px dashed var(--border2);border-radius:var(--r-sm);
+  padding:24px;text-align:center;cursor:pointer;
+  transition:all .2s;background:var(--bg);
+  display:block;
+}
+.file-zone:hover,.file-zone.drag{
+  border-color:var(--blue);background:var(--blue-lt);
+}
+.file-icon{font-size:28px;margin-bottom:8px;}
+.file-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px;}
+.file-sub{font-size:12px;color:var(--text-soft);}
+.file-name{
+  margin-top:10px;font-size:12px;font-weight:600;
+  color:var(--blue);background:var(--blue-lt);
+  padding:4px 12px;border-radius:100px;display:inline-block;
+}
+
+.format-box{
+  margin-top:14px;padding:12px 14px;background:var(--bg);
+  border:1.5px solid var(--border);border-radius:var(--r-sm);
+  font-size:12px;color:var(--text-mid);line-height:1.7;
+}
+.format-box code{
+  font-family:'DM Mono',monospace;font-size:12px;
+  background:var(--border);padding:1px 5px;border-radius:4px;
+  color:var(--text);
+}
+.format-box .ex{
+  font-family:'DM Mono',monospace;font-size:12px;
+  background:var(--white);border:1.5px solid var(--border);
+  border-radius:6px;padding:8px 10px;margin-top:6px;
+  color:var(--teal);white-space:pre;line-height:1.8;display:block;
+}
+
+.manual-grid{
+  display:grid;grid-template-columns:1fr 1fr 1fr auto;
+  gap:10px;align-items:end;margin-bottom:12px;
+}
+.field label{
+  display:block;font-size:11px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.5px;
+  color:var(--text-soft);margin-bottom:5px;
+}
+.field input{
+  width:100%;padding:9px 11px;background:var(--bg);
+  border:1.5px solid var(--border);color:var(--text);
+  font-family:'DM Sans',sans-serif;font-size:14px;
+  border-radius:var(--r-sm);outline:none;
+  transition:border-color .15s,background .15s;
+}
+.field input:focus{
+  border-color:var(--blue);background:var(--white);
+  box-shadow:0 0 0 3px rgba(59,91,219,.08);
+}
+.field input.err{border-color:var(--red);background:var(--red-lt);}
+
+.btn{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:9px 16px;border:none;cursor:pointer;
+  font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;
+  border-radius:var(--r-sm);transition:all .15s;
+}
+.btn-green{background:var(--green);color:#fff;}
+.btn-green:hover{background:#15803d;transform:translateY(-1px);box-shadow:0 4px 12px rgba(22,163,74,.3);}
+.btn-blue{background:var(--blue);color:#fff;}
+.btn-blue:hover{background:var(--blue-dk);transform:translateY(-1px);box-shadow:0 4px 14px rgba(59,91,219,.35);}
+.btn-outline{background:var(--white);color:var(--text-mid);border:1.5px solid var(--border2);}
+.btn-outline:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-lt);}
+.btn-red-soft{background:var(--red-lt);color:var(--red);border:1.5px solid #fca5a5;}
+.btn-red-soft:hover{background:#fee2e2;}
+.btn:active{transform:translateY(0);}
+.btn:disabled{opacity:.4;cursor:default;transform:none !important;}
+
+.proc-list{display:flex;flex-direction:column;gap:5px;}
+.proc-row{
+  display:grid;grid-template-columns:44px 1fr 1fr auto;
+  align-items:center;gap:8px;padding:9px 13px;
+  background:var(--bg);border:1.5px solid var(--border);
+  border-radius:var(--r-sm);animation:slideIn .2s ease;
+}
+@keyframes slideIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.proc-badge{
+  padding:3px 0;border-radius:5px;font-weight:700;
+  font-size:13px;text-align:center;color:#fff;
+}
+.proc-kv{font-size:13px;color:var(--text-mid);}
+.proc-kv b{color:var(--text);font-weight:600;margin-left:4px;}
+.btn-del{
+  width:26px;height:26px;border:1.5px solid var(--border2);
+  background:var(--white);color:var(--text-soft);border-radius:6px;
+  cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;
+  transition:all .15s;
+}
+.btn-del:hover{background:var(--red-lt);border-color:var(--red);color:var(--red);}
+
+.empty-hint{
+  padding:20px;text-align:center;color:var(--text-soft);font-size:13px;
+  border:2px dashed var(--border);border-radius:var(--r-sm);
+}
+
+.sim-controls{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+}
+.speed-group{
+  display:flex;align-items:center;gap:8px;margin-left:auto;
+}
+.speed-label{font-size:12px;color:var(--text-soft);font-weight:500;}
+.speed-select{
+  padding:6px 10px;background:var(--bg);border:1.5px solid var(--border);
+  color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;
+  border-radius:var(--r-sm);outline:none;cursor:pointer;
+}
+.speed-select:focus{border-color:var(--blue);}
+
+.sim-status{
+  display:flex;align-items:center;gap:8px;
+  font-size:13px;color:var(--text-mid);font-weight:500;
+}
+.status-dot{
+  width:9px;height:9px;border-radius:50%;background:var(--border2);
+  transition:background .3s;
+}
+.status-dot.running{background:var(--green);animation:pulse-dot 1s ease-in-out infinite;}
+.status-dot.done{background:var(--blue);}
+@keyframes pulse-dot{0%,100%{transform:scale(1)}50%{transform:scale(1.3)}}
+
+.clock-row{
+  display:flex;align-items:center;gap:14px;
+  padding:12px 16px;background:var(--bg);
+  border:1.5px solid var(--border);border-radius:var(--r-sm);
+  margin-bottom:14px;
+}
+.clock-label{font-size:12px;color:var(--text-soft);font-weight:500;}
+.clock-val{
+  font-family:'DM Mono',monospace;font-size:22px;
+  font-weight:500;color:var(--blue);letter-spacing:1px;
+}
+.clock-running-proc{
+  font-size:13px;font-weight:600;
+  padding:3px 12px;border-radius:100px;color:#fff;
+  transition:background .3s;
+}
+.queue-chips{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto;}
+.q-chip{
+  padding:3px 10px;border-radius:100px;font-size:11px;
+  font-weight:600;background:var(--border);color:var(--text-mid);
+  border:1.5px solid var(--border2);
+}
+
+.gantt-outer{overflow-x:auto;padding-bottom:4px;}
+.gantt-inner-wrap{min-width:560px;}
+
+.gantt-row{
+  display:flex;align-items:center;gap:10px;
+  margin-bottom:7px;animation:fadeUp .3s ease both;
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+
+.g-label{
+  width:42px;text-align:right;flex-shrink:0;
+  font-family:'DM Mono',monospace;font-size:12px;
+  font-weight:500;color:var(--text-mid);
+}
+.g-track{
+  flex:1;height:36px;background:var(--bg);
+  border:1.5px solid var(--border);border-radius:7px;
+  position:relative;overflow:visible;
+}
+.g-block{
+  position:absolute;top:3px;bottom:3px;border-radius:5px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'DM Mono',monospace;font-size:11px;font-weight:500;
+  color:#fff;cursor:default;transition:filter .15s,transform .15s;
+  overflow:hidden;
+}
+.g-block:hover{filter:brightness(1.12);transform:scaleY(1.1);z-index:5;}
+
+/* Animated fill for live blocks */
+.g-block.live{
+  animation:growBlock .35s cubic-bezier(.34,1.56,.64,1) both;
+  transform-origin:left;
+}
+@keyframes growBlock{from{transform:scaleX(0);opacity:0}to{transform:scaleX(1);opacity:1}}
+
+.g-block .g-tip{
+  display:none;position:absolute;
+  bottom:calc(100% + 7px);left:50%;transform:translateX(-50%);
+  background:var(--text);color:#fff;font-size:11px;
+  padding:5px 10px;border-radius:6px;white-space:nowrap;
+  z-index:30;pointer-events:none;box-shadow:var(--shadow-sm);
+}
+.g-block .g-tip::after{
+  content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);
+  border:5px solid transparent;border-top-color:var(--text);
+}
+.g-block:hover .g-tip{display:block;}
+
+.g-idle{
+  position:absolute;top:3px;bottom:3px;border-radius:5px;
+  background:repeating-linear-gradient(45deg,transparent,transparent 4px,rgba(0,0,0,.04) 4px,rgba(0,0,0,.04) 8px);
+  border:1.5px dashed var(--border2);display:flex;align-items:center;
+  justify-content:center;font-size:10px;color:var(--text-soft);
+}
+
+/* CPU bar */
+.g-cpu-track{
+  flex:1;height:22px;background:var(--bg);
+  border:1.5px solid var(--border);border-radius:5px;
+  position:relative;overflow:hidden;
+}
+
+/* Ruler */
+.g-ruler{position:relative;height:18px;margin-left:52px;}
+.r-tick{
+  position:absolute;transform:translateX(-50%);
+  font-family:'DM Mono',monospace;font-size:10px;color:var(--text-soft);
+}
+
+/* ── Stats ── */
+.stats-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+  gap:10px;margin-bottom:14px;
+}
+.stat-card{
+  background:var(--bg);border:1.5px solid var(--border);
+  border-radius:var(--r-sm);padding:14px 12px;text-align:center;
+}
+.stat-card.highlight{background:var(--blue-lt);border-color:#c5d3f7;}
+.stat-lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-soft);margin-bottom:5px;}
+.stat-val{font-family:'DM Mono',monospace;font-size:22px;font-weight:500;color:var(--blue);line-height:1;}
+.stat-unit{font-size:11px;color:var(--text-soft);margin-top:3px;}
+
+.util-row{display:flex;align-items:center;gap:12px;}
+.util-lbl{font-size:12px;color:var(--text-soft);font-weight:500;width:115px;flex-shrink:0;}
+.util-track{flex:1;height:9px;background:var(--border);border-radius:100px;overflow:hidden;}
+.util-fill{height:100%;background:linear-gradient(90deg,var(--blue),#748ffc);border-radius:100px;transition:width .8s cubic-bezier(.34,1.56,.64,1);}
+.util-pct{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:var(--blue);width:42px;text-align:right;}
+
+/* ── Results table ── */
+.rtable{width:100%;border-collapse:collapse;font-size:13px;}
+.rtable th{
+  padding:10px 14px;font-size:11px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.5px;color:var(--text-soft);
+  background:#fafbfe;border-bottom:1.5px solid var(--border);
+  text-align:left;white-space:nowrap;
+}
+.rtable th.num,.rtable td.num{text-align:right;font-family:'DM Mono',monospace;}
+.rtable td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--text);}
+.rtable tr:last-child td{border-bottom:none;}
+.rtable tr:hover td{background:var(--bg);}
+.rtable tr.avg-row td{
+  background:#fafbfe;font-weight:600;color:var(--blue);
+  border-top:2px solid var(--border);
+}
+.proc-chip{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:3px 11px 3px 8px;border-radius:100px;
+  font-weight:700;font-size:13px;color:#fff;
+}
+.chip-dot{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.5);}
+
+/* ── Validation msgs ── */
+.msg{
+  padding:10px 14px;border-radius:var(--r-sm);font-size:13px;
+  margin-bottom:10px;display:none;
+}
+.msg.show{display:flex;align-items:center;gap:8px;}
+.msg-warn{background:var(--amber-lt);border:1.5px solid #fcd34d;color:var(--amber);}
+.msg-err{background:var(--red-lt);border:1.5px solid #fca5a5;color:var(--red);}
+.msg-ok{background:var(--green-lt);border:1.5px solid #86efac;color:var(--green);}
+
+/* ── Divider ── */
+hr.div{border:none;border-top:1.5px solid var(--border);margin:6px 0;}
+
+.hidden{display:none!important;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <h1>Planificador de CPU</h1>
+    <p>Práctica de Laboratorio 1 — Sistemas Operativos</p>
+  </div>
+  <span class="course-tag">JESUS VIDAL CHECMA MONTALVO</span>
+</div>
+
+<div class="layout">
+
+  <!-- ① Política -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title"><span class="step-badge">1</span>Política de Planificación</div>
+    </div>
+    <div class="card-body">
+      <div class="policy-grid">
+        <button class="policy-btn active" onclick="seleccionarPolitica('FCFS')" id="btn-FCFS">
+          <span class="p-name">FCFS</span>
+          <span class="p-sub">First-Come, First-Served</span>
+        </button>
+        <button class="policy-btn" onclick="seleccionarPolitica('SPN')" id="btn-SPN">
+          <span class="p-name">SPN</span>
+          <span class="p-sub">Shortest Process Next</span>
+        </button>
+      </div>
+      <div class="policy-desc" id="policy-desc"></div>
+    </div>
+  </div>
+
+  <!-- ② Entrada -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title"><span class="step-badge">2</span>Entrada de Datos</div>
+    </div>
+    <div class="card-body">
+      <div class="two-col">
+
+        <!-- Archivo -->
+        <div>
+          <p style="font-size:12px;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">📂 Cargar desde archivo</p>
+          <input type="file" id="file-input" accept=".csv,.txt" style="display:none" onchange="cargarArchivo(event)">
+          <label class="file-zone" id="file-zone" for="file-input">
+            <div class="file-icon">📄</div>
+            <div class="file-title">Haz clic para seleccionar archivo</div>
+            <div class="file-sub">Formatos: CSV o TXT — o arrastra aquí</div>
+            <div class="file-name hidden" id="file-name-display"></div>
+          </label>
+          <div class="format-box">
+            <strong>Formato del archivo:</strong><br>
+            Columnas: <code>nombre, llegada, rafaga</code><br>
+            Una línea por proceso (sin encabezado).<br>
+            <span class="ex">P1, 0, 8
+P2, 1, 4
+P3, 2, 9
+P4, 3, 5</span>
+          </div>
+        </div>
+
+        <!-- Manual -->
+        <div>
+          <p style="font-size:12px;font-weight:600;color:var(--text-mid);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">✏️ Ingreso manual</p>
+          <div class="manual-grid">
+            <div class="field">
+              <label>Proceso</label>
+              <input type="text" id="procName" placeholder="P1" maxlength="4">
+            </div>
+            <div class="field">
+              <label>Llegada</label>
+              <input type="number" id="arrivalTime" placeholder="0" min="0">
+            </div>
+            <div class="field">
+              <label>Ráfaga</label>
+              <input type="number" id="cpuBurst" placeholder="5" min="1">
+            </div>
+            <button class="btn btn-green" onclick="anadirProceso()" style="height:38px">+ Add</button>
+          </div>
+
+          <div class="msg msg-warn" id="msg-warn">⚠ <span id="msg-warn-text"></span></div>
+          <div class="msg msg-err"  id="msg-err">✕ <span id="msg-err-text"></span></div>
+          <div class="msg msg-ok"   id="msg-ok">✓ <span id="msg-ok-text"></span></div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <span style="font-size:12px;color:var(--text-soft)">Procesos cargados: <b id="proc-count" style="color:var(--text)">0</b></span>
+            <button class="btn btn-red-soft" style="padding:5px 12px;font-size:12px" onclick="limpiarTodo()">Limpiar todo</button>
+          </div>
+
+          <div class="proc-list" id="proc-list"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ Simulación -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title"><span class="step-badge">3</span>Simulación en Tiempo Real</div>
+      <div class="sim-status">
+        <div class="status-dot" id="status-dot"></div>
+        <span id="status-text">Sin iniciar</span>
+      </div>
+    </div>
+    <div class="card-body">
+
+      <div class="sim-controls" style="margin-bottom:14px;">
+        <button class="btn btn-blue" onclick="iniciarSim()" id="btn-start">▶ Iniciar</button>
+        <button class="btn btn-outline" onclick="pausarSim()" id="btn-pause" disabled>⏸ Pausar</button>
+        <button class="btn btn-outline" onclick="avanzarPaso()" id="btn-step" disabled>⏭ Paso</button>
+        <button class="btn btn-outline" onclick="reiniciarSim()" id="btn-reset" disabled>↺ Reiniciar</button>
+        <div class="speed-group">
+          <span class="speed-label">Velocidad:</span>
+          <select class="speed-select" id="speed-select">
+            <option value="1200">Lenta</option>
+            <option value="700" selected>Normal</option>
+            <option value="350">Rápida</option>
+            <option value="100">Turbo</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Clock -->
+      <div class="clock-row">
+        <span class="clock-label">Tiempo</span>
+        <span class="clock-val" id="clock">t = 0</span>
+        <span class="clock-running-proc" id="running-proc" style="background:var(--border2)">— Idle —</span>
+        <div class="queue-chips" id="queue-display"></div>
+      </div>
+
+      <!-- Gantt dinámico -->
+      <div class="gantt-outer">
+        <div class="gantt-inner-wrap" id="gantt-wrap">
+          <div class="empty-hint" id="gantt-empty">El diagrama de Gantt aparecerá aquí al iniciar la simulación.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ④ Resultados -->
+  <div class="card hidden" id="results-card">
+    <div class="card-head">
+      <div class="card-title"><span class="step-badge">4</span>Métricas y Resultados</div>
+      <span id="results-algo-tag" style="font-size:12px;font-weight:600;color:var(--blue);background:var(--blue-lt);padding:4px 12px;border-radius:100px;border:1.5px solid #c5d3f7;"></span>
+    </div>
+    <div class="card-body">
+      <div class="stats-grid" id="stats-grid"></div>
+      <div class="util-row" style="margin-bottom:18px;">
+        <span class="util-lbl">Utilización CPU</span>
+        <div class="util-track"><div class="util-fill" id="util-fill" style="width:0%"></div></div>
+        <span class="util-pct" id="util-pct">0%</span>
+      </div>
+      <hr class="div">
+      <p style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-soft);margin:14px 0 10px;">Detalle por proceso</p>
+      <div style="overflow-x:auto">
+        <table class="rtable" id="rtable"></table>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /layout -->
+
+<script>
+/* VARIABLES GLOBALES */
+const PALETA = ['#3b5bdb','#0c9488','#c2410c','#7c3aed','#15803d','#b45309','#db2777','#0369a1'];
+let procesos  = [];
+let mapaColores   = {};
+let politica     = 'FCFS';
+
+// Estado de la simulación
+let lineaTiempoSim   = [];
+let pasoSim       = 0;
+let timerSim      = null;
+let simEjecutando    = false;
+let simPausado     = false;
+let simTerminado       = false;
+
+/* DESCRIPCIONES DE ALGORITMOS */
+const DESC_POLITICA = {
+  FCFS: "First-Come, First-Served (No expulsiva): Los procesos se atienden en el orden en que llegan a la cola. Simple de implementar, pero puede provocar el efecto convoy si un proceso largo llega primero.",
+  SPN:  "Shortest Process Next (No expulsiva): Cuando la CPU queda libre, se selecciona el proceso disponible con menor ráfaga de CPU. Minimiza el tiempo promedio de espera, pero puede causar inanición en procesos largos.",
+};
+
+function seleccionarPolitica(p) {
+  politica = p;
+  document.querySelectorAll('.policy-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-' + p).classList.add('active');
+  document.getElementById('policy-desc').textContent = DESC_POLITICA[p];
+  reiniciarSim();
+}
+
+/* ENTRADA DE ARCHIVOS */
+const zonaArchivo = document.getElementById('file-zone');
+zonaArchivo.addEventListener('dragover', e => { e.preventDefault(); zonaArchivo.classList.add('drag'); });
+zonaArchivo.addEventListener('dragleave', () => zonaArchivo.classList.remove('drag'));
+zonaArchivo.addEventListener('drop', e => {
+  e.preventDefault(); zonaArchivo.classList.remove('drag');
+  const archivo = e.dataTransfer.files[0];
+  if (archivo) analizarArchivo(archivo);
+});
+
+function cargarArchivo(evt) {
+  const archivo = evt.target.files[0];
+  if (archivo) analizarArchivo(archivo);
+}
+
+function analizarArchivo(archivo) {
+  const ext = archivo.name.split('.').pop().toLowerCase();
+  if (!['csv','txt'].includes(ext)) { mostrarMsg('err','Solo se aceptan archivos .csv o .txt'); return; }
+
+  const lector = new FileReader();
+  lector.onload = e => {
+    const lineas = e.target.result.split(/\r?\n/).filter(l => l.trim() && !l.startsWith('#'));
+    const parseados = [], errores = [];
+
+    lineas.forEach((linea, i) => {
+      const cols = linea.split(/,|;|\t/).map(c => c.trim());
+      if (cols.length < 3) { errores.push(`Línea ${i+1}: faltan columnas`); return; }
+      const nombre    = cols[0];
+      const llegada = parseInt(cols[1]);
+      const rafaga   = parseInt(cols[2]);
+      if (!nombre)         { errores.push(`Línea ${i+1}: nombre inválido`); return; }
+      if (isNaN(llegada)){ errores.push(`Línea ${i+1}: tiempo de llegada inválido`); return; }
+      if (isNaN(rafaga)||rafaga<=0){ errores.push(`Línea ${i+1}: ráfaga inválida`); return; }
+      if (procesos.find(p=>p.name===nombre)||parseados.find(p=>p.name===nombre)) { errores.push(`Línea ${i+1}: proceso "${nombre}" duplicado`); return; }
+      parseados.push({ name: nombre, arrival: llegada, burst: rafaga });
+    });
+
+    if (errores.length) { mostrarMsg('warn', errores[0] + (errores.length>1?` (+${errores.length-1} más)`:'')); }
+    if (parseados.length) {
+      parseados.forEach(p => anadirALista(p));
+      document.getElementById('file-name-display').textContent = `✓ ${archivo.name} — ${parseados.length} procesos`;
+      document.getElementById('file-name-display').classList.remove('hidden');
+      mostrarMsg('ok', `${parseados.length} proceso(s) cargados desde "${archivo.name}"`);
+      reiniciarSim();
+    }
+  };
+  lector.readAsText(archivo);
+}
+
+/* ENTRADA MANUAL */
+function anadirProceso() {
+  const nombreEl  = document.getElementById('procName');
+  const llegadaEl   = document.getElementById('arrivalTime');
+  const rafagaEl = document.getElementById('cpuBurst');
+
+  const rawLlegada   = llegadaEl.value.trim();
+  const rawRafaga = rafagaEl.value.trim();
+  const llegada  = rawLlegada === '' ? 0 : parseInt(rawLlegada);
+  const rafaga    = parseInt(rawRafaga);
+
+  let nombre = nombreEl.value.trim();
+  if (!nombre) {
+    let n = procesos.length + 1;
+    while (procesos.find(p => p.name === 'P' + n)) n++;
+    nombre = 'P' + n;
+  }
+
+  if (isNaN(llegada) || llegada < 0) { errorCampo(llegadaEl, 'Tiempo de llegada inválido (debe ser ≥ 0)'); return; }
+  if (isNaN(rafaga)   || rafaga <= 0)  { errorCampo(rafagaEl, 'Ráfaga inválida (debe ser > 0)'); return; }
+  if (procesos.find(p => p.name === nombre)) { mostrarMsg('warn', `El proceso "${nombre}" ya existe, elige otro nombre`); nombreEl.value = ''; nombreEl.focus(); return; }
+
+  anadirALista({ name: nombre, arrival: llegada, burst: rafaga });
+  nombreEl.value = ''; llegadaEl.value = ''; rafagaEl.value = '';
+  mostrarMsg('ok', `Proceso ${nombre} añadido (llegada=${llegada}, ráfaga=${rafaga})`);
+  nombreEl.focus();
+  reiniciarSim();
+}
+
+function anadirALista(p) {
+  const color = PALETA[procesos.length % PALETA.length];
+  procesos.push({ ...p, color });
+  mapaColores[p.name] = color;
+  mostrarLista();
+}
+
+function quitarProceso(i) {
+  procesos.splice(i, 1);
+  mapaColores = {};
+  procesos.forEach((p,idx) => { p.color = PALETA[idx % PALETA.length]; mapaColores[p.name] = p.color; });
+  mostrarLista();
+  reiniciarSim();
+}
+
+function limpiarTodo() {
+  procesos = []; mapaColores = {};
+  mostrarLista(); reiniciarSim();
+  document.getElementById('file-name-display').classList.add('hidden');
+  document.getElementById('file-name-display').textContent = '';
+}
+
+function mostrarLista() {
+  const el = document.getElementById('proc-list');
+  document.getElementById('proc-count').textContent = procesos.length;
+  if (!procesos.length) {
+    el.innerHTML = '<div class="empty-hint">Sin procesos — carga un archivo o añade manualmente</div>';
+    return;
+  }
+  el.innerHTML = procesos.map((p,i) => `
+    <div class="proc-row" style="border-left:3px solid ${p.color}">
+      <div class="proc-badge" style="background:${p.color}">${p.name}</div>
+      <div class="proc-kv">Llegada <b>${p.arrival}</b></div>
+      <div class="proc-kv">Ráfaga <b>${p.burst}</b></div>
+      <button class="btn-del" onclick="quitarProceso(${i})">×</button>
+    </div>
+  `).join('');
+}
+
+/* ALGORITMOS DE PLANIFICACIÓN */
+function calcularLineaTiempo(ps, pol) {
+  if (pol === 'FCFS') return algoritmoFCFS(ps);
+  return algoritmoSPN(ps);
+}
+
+function algoritmoFCFS(ps) {
+  const ordenados = [...ps].sort((a,b) => a.arrival-b.arrival || a.name.localeCompare(b.name));
+  let t=0, linea=[];
+  for (const p of ordenados) {
+    if (t < p.arrival) { linea.push({name:'IDLE',start:t,end:p.arrival}); t=p.arrival; }
+    linea.push({name:p.name,start:t,end:t+p.burst}); t+=p.burst;
+  }
+  return linea;
+}
+
+function algoritmoSPN(ps) {
+  let pendientes=[...ps].sort((a,b)=>a.arrival-b.arrival), t=0, linea=[];
+  while (pendientes.length) {
+    const disponibles = pendientes.filter(p=>p.arrival<=t);
+    if (!disponibles.length) { linea.push({name:'IDLE',start:t,end:pendientes[0].arrival}); t=pendientes[0].arrival; continue; }
+    disponibles.sort((a,b)=>a.burst-b.burst || a.arrival-b.arrival || a.name.localeCompare(b.name));
+    const proc=disponibles[0];
+    linea.push({name:proc.name,start:t,end:t+proc.burst}); t+=proc.burst;
+    pendientes=pendientes.filter(p=>p!==proc);
+  }
+  return linea;
+}
+
+/* MOTOR DE SIMULACIÓN */
+function iniciarSim() {
+  if (!procesos.length) { mostrarMsg('warn','Añade al menos un proceso antes de simular'); return; }
+  if (simEjecutando && !simPausado) return;
+
+  if (!lineaTiempoSim.length) {
+    lineaTiempoSim = calcularLineaTiempo(procesos, politica);
+    pasoSim     = 0;
+    inicializarGantt();
+  }
+
+  simEjecutando = true; simPausado = false; simTerminado = false;
+  cambiarEstado('running','Simulando...');
+  configurarControles(true);
+  pulso();
+}
+
+function pulso() {
+  if (!simEjecutando || simPausado) return;
+  if (pasoSim >= lineaTiempoSim.length) { terminarSim(); return; }
+  avanzarPaso();
+  const retraso = parseInt(document.getElementById('speed-select').value);
+  timerSim = setTimeout(pulso, retraso);
+}
+
+function avanzarPaso() {
+  if (pasoSim >= lineaTiempoSim.length) { terminarSim(); return; }
+  dibujarSegmento(lineaTiempoSim[pasoSim]);
+  actualizarReloj(lineaTiempoSim[pasoSim]);
+  pasoSim++;
+  if (pasoSim >= lineaTiempoSim.length) {
+    clearTimeout(timerSim); terminarSim();
+  }
+}
+
+function pausarSim() {
+  if (!simEjecutando) return;
+  simPausado = !simPausado;
+  clearTimeout(timerSim);
+  if (simPausado) {
+    cambiarEstado('','Pausado');
+    document.getElementById('btn-pause').textContent = '▶ Reanudar';
+  } else {
+    document.getElementById('btn-pause').textContent = '⏸ Pausar';
+    cambiarEstado('running','Simulando...');
+    pulso();
+  }
+}
+
+function reiniciarSim() {
+  clearTimeout(timerSim);
+  lineaTiempoSim=[]; pasoSim=0; simEjecutando=false; simPausado=false; simTerminado=false;
+  cambiarEstado('','Sin iniciar');
+  configurarControles(false);
+  document.getElementById('gantt-wrap').innerHTML = '<div class="empty-hint" id="gantt-empty">El diagrama de Gantt aparecerá aquí al iniciar la simulación.</div>';
+  document.getElementById('clock').textContent = 't = 0';
+  document.getElementById('running-proc').textContent = '— Idle —';
+  document.getElementById('running-proc').style.background = 'var(--border2)';
+  document.getElementById('queue-display').innerHTML = '';
+  document.getElementById('results-card').classList.add('hidden');
+  document.getElementById('btn-pause').textContent = '⏸ Pausar';
+}
+
+function terminarSim() {
+  simEjecutando=false; simTerminado=true;
+  clearTimeout(timerSim);
+  cambiarEstado('done','Completado');
+  configurarControles(false, true);
+  actualizarReloj(lineaTiempoSim[lineaTiempoSim.length-1], true);
+  mostrarResultados();
+}
+
+function configurarControles(ejecutando, terminado=false) {
+  document.getElementById('btn-start').disabled  = ejecutando || terminado;
+  document.getElementById('btn-pause').disabled  = !ejecutando || terminado;
+  document.getElementById('btn-step').disabled   = (!ejecutando && !lineaTiempoSim.length) || terminado;
+  document.getElementById('btn-reset').disabled  = (!lineaTiempoSim.length && !procesos.length);
+  if (terminado) {
+    document.getElementById('btn-step').disabled = true;
+    document.getElementById('btn-reset').disabled = false;
+  }
+}
+
+function cambiarEstado(clase, texto) {
+  const punto = document.getElementById('status-dot');
+  punto.className = 'status-dot' + (clase ? ' '+clase : '');
+  document.getElementById('status-text').textContent = texto;
+}
+
+/* DIAGRAMA DE GANTT */
+let estadoGantt = {};
+
+function inicializarGantt() {
+  const contenedor = document.getElementById('gantt-wrap');
+  contenedor.innerHTML = '';
+  estadoGantt = {};
+
+  const totalFin = Math.max(...lineaTiempoSim.map(s=>s.end));
+  const nombresProcesos = [...new Set(lineaTiempoSim.filter(s=>s.name!=='IDLE').map(s=>s.name))];
+
+  nombresProcesos.forEach((nombre, i) => {
+    const color = mapaColores[nombre] || PALETA[i%PALETA.length];
+    const filaEl = document.createElement('div');
+    filaEl.className='gantt-row';
+    filaEl.style.animationDelay = `${i*0.05}s`;
+    filaEl.innerHTML = `
+      <span class="g-label" style="color:${color}">${nombre}</span>
+      <div class="g-track" id="gtrack-${nombre}"></div>
+    `;
+    contenedor.appendChild(filaEl);
+    estadoGantt[nombre] = { totalFin };
+  });
+
+  const filaCP = document.createElement('div');
+  filaCP.style.cssText='display:flex;align-items:center;gap:10px;margin:6px 0;';
+  filaCP.innerHTML=`<span class="g-label" style="font-size:10px;color:var(--text-soft)">CPU</span><div class="g-cpu-track" id="gtrack-CPU"></div>`;
+  contenedor.appendChild(filaCP);
+  estadoGantt['CPU'] = { totalFin };
+
+  const reglaEl = document.createElement('div');
+  reglaEl.className = 'g-ruler';
+  reglaEl.id = 'gantt-ruler';
+  contenedor.appendChild(reglaEl);
+
+  actualizarRegla(0, totalFin);
+}
+
+function dibujarSegmento(seg) {
+  const totalFin = Math.max(...lineaTiempoSim.map(s=>s.end));
+  const Porcentaje = v => (v/totalFin*100).toFixed(3)+'%';
+  const duracion = seg.end - seg.start;
+
+  if (seg.name !== 'IDLE') {
+    const pista = document.getElementById('gtrack-' + seg.name);
+    if (pista) {
+      const bloque = document.createElement('div');
+      bloque.className = 'g-block live';
+      const color = mapaColores[seg.name] || '#888';
+      bloque.style.cssText = `left:${Porcentaje(seg.start)};width:${Porcentaje(duracion)};background:${color};`;
+      bloque.innerHTML = `
+        <span class="g-tip">${seg.name} · t=${seg.start}→${seg.end} (${duracion}u)</span>
+        ${duracion/totalFin > 0.06 ? seg.name : ''}
+      `;
+      pista.appendChild(bloque);
+    }
+  }
+
+  const pistaCP = document.getElementById('gtrack-CPU');
+  if (pistaCP) {
+    const bloque = document.createElement('div');
+    if (seg.name === 'IDLE') {
+      bloque.className = 'g-idle';
+      bloque.style.cssText = `position:absolute;left:${Porcentaje(seg.start)};width:${Porcentaje(duracion)};top:2px;bottom:2px;border-radius:4px;font-size:10px;`;
+      bloque.textContent = 'idle';
+    } else {
+      bloque.className = 'g-block live';
+      const color = mapaColores[seg.name] || '#888';
+      bloque.style.cssText = `left:${Porcentaje(seg.start)};width:${Porcentaje(duracion)};background:${color};opacity:.75;`;
+      bloque.innerHTML = `<span class="g-tip">${seg.name} [${seg.start}–${seg.end}]</span>`;
+    }
+    pistaCP.appendChild(bloque);
+  }
+
+  actualizarRegla(seg.end, totalFin);
+}
+
+function actualizarRegla(actual, total) {
+  const regla = document.getElementById('gantt-ruler');
+  if (!regla) return;
+  regla.innerHTML = '';
+  const paso = total<=20?1:total<=50?2:5;
+  for (let t=0; t<=actual; t+=paso) {
+    const marca = document.createElement('span');
+    marca.className='r-tick';
+    marca.style.left=(t/total*100).toFixed(2)+'%';
+    marca.textContent=t;
+    regla.appendChild(marca);
+  }
+  if (actual > 0 && actual % paso !== 0) {
+    const marca=document.createElement('span');
+    marca.className='r-tick';marca.style.left=(actual/total*100).toFixed(2)+'%';
+    marca.textContent=actual; regla.appendChild(marca);
+  }
+}
+
+function actualizarReloj(seg, terminado=false) {
+  document.getElementById('clock').textContent = `t = ${terminado ? seg.end : seg.start}`;
+
+  if (seg.name === 'IDLE') {
+    document.getElementById('running-proc').textContent = '— Idle —';
+    document.getElementById('running-proc').style.background = 'var(--border2)';
+  } else {
+    document.getElementById('running-proc').textContent = `Ejecutando: ${seg.name}`;
+    document.getElementById('running-proc').style.background = mapaColores[seg.name] || 'var(--blue)';
+  }
+
+  const proximoT = seg.end;
+  const enCola = procesos.filter(p => {
+    const segmentos = lineaTiempoSim.filter(s => s.name === p.name);
+    const primerSeg = segmentos[0];
+    return primerSeg && primerSeg.start >= proximoT && p.arrival <= proximoT;
+  });
+  document.getElementById('queue-display').innerHTML = enCola.map(p =>
+    `<span class="q-chip" style="background:${mapaColores[p.name]}20;border-color:${mapaColores[p.name]}60;color:${mapaColores[p.name]}">${p.name}</span>`
+  ).join('') || '';
+}
+
+/* CÁLCULO DE MÉTRICAS */
+function calcularMetricas(linea, ps) {
+  return ps.map(p => {
+    const segmentos  = linea.filter(s=>s.name===p.name);
+    if (!segmentos.length) return null;
+    const inicio = Math.min(...segmentos.map(s=>s.start));
+    const fin   = Math.max(...segmentos.map(s=>s.end));
+    return {
+      ...p,
+      start: inicio,
+      end: fin,
+      wait:       Math.max(0, inicio - p.arrival),
+      turnaround: fin - p.arrival,
+    };
+  }).filter(Boolean);
+}
+
+function mostrarResultados() {
+  const tarjeta = document.getElementById('results-card');
+  tarjeta.classList.remove('hidden');
+  tarjeta.scrollIntoView({behavior:'smooth', block:'start'});
+
+  const metricas  = calcularMetricas(lineaTiempoSim, procesos);
+  const totalFin = Math.max(...lineaTiempoSim.map(s=>s.end));
+  const tiempoActivo = lineaTiempoSim.filter(s=>s.name!=='IDLE').reduce((a,s)=>a+(s.end-s.start),0);
+  const utilizacion     = ((tiempoActivo/totalFin)*100).toFixed(1);
+  const espPromedioEspera  = (metricas.reduce((a,m)=>a+m.wait,0)/metricas.length).toFixed(2);
+  const espPromedioRetorno    = (metricas.reduce((a,m)=>a+m.turnaround,0)/metricas.length).toFixed(2);
+  const transferencia     = (metricas.length/totalFin).toFixed(3);
+
+  document.getElementById('results-algo-tag').textContent = politica;
+
+  document.getElementById('stats-grid').innerHTML = [
+    ['T. Espera Promedio', espPromedioEspera,  'unidades', true],
+    ['T. Retorno Promedio', espPromedioRetorno,   'unidades', true],
+    ['Transferencia',         transferencia,    'proc/u',   false],
+    ['Tiempo Total CPU',   totalFin,'unidades', false],
+    ['Procesos',           metricas.length,'total',false],
+  ].map(([n,v,u,hl])=>`
+    <div class="stat-card${hl?' highlight':''}">
+      <div class="stat-lbl">${n}</div>
+      <div class="stat-val">${v}</div>
+      <div class="stat-unit">${u}</div>
+    </div>
+  `).join('');
+
+  setTimeout(()=>{
+    document.getElementById('util-fill').style.width=utilizacion+'%';
+    document.getElementById('util-pct').textContent=utilizacion+'%';
+  },300);
+
+  const maxEspera = Math.max(...metricas.map(m=>m.wait));
+  document.getElementById('rtable').innerHTML = `
+    <thead><tr>
+      <th>Proceso</th>
+      <th class="num">Llegada</th>
+      <th class="num">Ráfaga</th>
+      <th class="num">Inicio</th>
+      <th class="num">Fin</th>
+      <th class="num">T. Espera</th>
+      <th class="num">T. Retorno</th>
+    </tr></thead>
+    <tbody>
+      ${metricas.map(m=>`
+        <tr>
+          <td><span class="proc-chip" style="background:${m.color}"><span class="chip-dot"></span>${m.name}</span></td>
+          <td class="num">${m.arrival}</td>
+          <td class="num">${m.burst}</td>
+          <td class="num">${m.start}</td>
+          <td class="num">${m.end}</td>
+          <td class="num" style="color:${m.wait===maxEspera&&maxEspera>0?'var(--red)':'var(--green)'};font-weight:600">${m.wait}</td>
+          <td class="num">${m.turnaround}</td>
+        </tr>
+      `).join('')}
+      <tr class="avg-row">
+        <td colspan="5" style="text-align:right;font-size:12px;color:var(--text-mid)">Promedios →</td>
+        <td class="num">${espPromedioEspera}</td>
+        <td class="num">${espPromedioRetorno}</td>
+      </tr>
+    </tbody>
+  `;
+}
+
+/* FUNCIONES ÚTILES */
+function mostrarMsg(tipo, texto) {
+  ['warn','err','ok'].forEach(t => {
+    const el=document.getElementById('msg-'+t);
+    el.classList.remove('show');
+  });
+  const el = document.getElementById('msg-'+tipo);
+  document.getElementById('msg-'+tipo+'-text').textContent = texto;
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 4000);
+}
+
+function errorCampo(campo, mensaje) {
+  campo.classList.add('err');
+  mostrarMsg('err', mensaje);
+  setTimeout(()=>campo.classList.remove('err'),800);
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key==='Enter' && ['procName','arrivalTime','cpuBurst'].includes(e.target.id)) anadirProceso();
+});
+
+seleccionarPolitica('FCFS');
+mostrarLista();
+configurarControles(false);
+</script>
+</body>
+</html>
