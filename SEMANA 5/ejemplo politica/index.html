@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Planificación de CPU - Algoritmos Expulsivos</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+
+        .section h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #764ba2;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #6a408f;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(118, 75, 162, 0.4);
+        }
+
+        .btn-danger {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #ee5a52;
+            transform: translateY(-2px);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+            font-family: inherit;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 5px rgba(102, 126, 234, 0.3);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .policy-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .policy-card {
+            padding: 20px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .policy-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+        }
+
+        .policy-card.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .policy-card h3 {
+            margin-bottom: 10px;
+        }
+
+        .policy-card p {
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+
+        .process-list {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .process-item {
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .process-item button {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.8em;
+        }
+
+        .gantt-container {
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 20px;
+            overflow-x: auto;
+        }
+
+        .gantt {
+            display: block;
+            background: #f0f0f0;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin-top: 10px;
+        }
+
+        .gantt table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        .gantt table tr {
+            height: 40px;
+        }
+
+        .gantt table td,
+        .gantt table th {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+            min-width: 35px;
+        }
+
+        .gantt table th {
+            background: #667eea;
+            color: white;
+            font-weight: bold;
+        }
+
+        .gantt-block {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            border-right: 2px solid white;
+            position: relative;
+        }
+
+        .gantt-block:hover {
+            opacity: 0.8;
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .metric-card {
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .metric-card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+            text-transform: uppercase;
+        }
+
+        .metric-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .metric-unit {
+            font-size: 0.6em;
+            color: #999;
+            margin-left: 5px;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        table thead {
+            background: #667eea;
+            color: white;
+        }
+
+        table th,
+        table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        table tbody tr:hover {
+            background: #f5f5f5;
+        }
+
+        table tbody tr:nth-child(even) {
+            background: #fafafa;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .control-group label {
+            margin: 0;
+        }
+
+        .control-group input[type="range"] {
+            width: 150px;
+        }
+
+        .speed-value {
+            font-weight: bold;
+            min-width: 50px;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+
+        .info-box p {
+            margin: 5px 0;
+        }
+
+        .error-box {
+            background: #ffebee;
+            border-left: 4px solid #ff6b6b;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            color: #c62828;
+        }
+
+        .success-box {
+            background: #e8f5e9;
+            border-left: 4px solid #4caf50;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            color: #2e7d32;
+        }
+
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            border-bottom: 2px solid #ddd;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            color: #999;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+            margin-bottom: -2px;
+        }
+
+        .tab-btn:hover {
+            color: #667eea;
+        }
+
+        .tab-btn.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .policy-selector {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .metrics {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Simulador de Planificación de CPU</h1>
+            <p>Algoritmos Expulsivos: SRT (Shortest Remaining Time) y Round Robin</p>
+        </div>
+
+        <div class="content">
+            <!-- Sección 1: Selección de Política -->
+            <div class="section">
+                <h2>1. Seleccionar Política de Planificación</h2>
+                <div class="policy-selector" id="policySelector">
+                    <div class="policy-card" onclick="selectPolicy('srt')">
+                        <h3>SRT - Shortest Remaining Time</h3>
+                        <p>Algoritmo expulsivo que ejecuta siempre el proceso con el menor tiempo de CPU restante. Óptimo en tiempo de espera pero con riesgo de inanición.</p>
+                    </div>
+                    <div class="policy-card" onclick="selectPolicy('rr')">
+                        <h3>RR - Round Robin</h3>
+                        <p>Algoritmo expulsivo que asigna un quantum (intervalo de tiempo) a cada proceso. Justo para todos pero con mayor tiempo de espera.</p>
+                    </div>
+                </div>
+                <div class="info-box" id="policyInfo"></div>
+            </div>
+
+            <!-- Sección 2: Entrada de Datos -->
+            <div class="section">
+                <h2>2. Ingresar Procesos</h2>
+                <div class="tab-buttons">
+                    <button class="tab-btn active" onclick="switchTab(event, 'manual')">Ingreso Manual</button>
+                    <button class="tab-btn" onclick="switchTab(event, 'file')">Cargar desde Archivo</button>
+                </div>
+
+                <!-- Tab Manual -->
+                <div id="manual" class="tab-content active">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Nombre del Proceso</label>
+                            <input type="text" id="processName" placeholder="P1">
+                        </div>
+                        <div class="form-group">
+                            <label>Tiempo de Llegada (UT)</label>
+                            <input type="number" id="arrivalTime" placeholder="0" value="0" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Ráfaga de CPU (UT)</label>
+                            <input type="number" id="cpuBurst" placeholder="5" value="5" min="1">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="addProcess()">➕ Agregar Proceso</button>
+                    <button class="btn btn-danger" onclick="clearProcesses()">🗑️ Limpiar Todo</button>
+                </div>
+
+                <!-- Tab File -->
+                <div id="file" class="tab-content">
+                    <div class="form-group">
+                        <label>Cargar archivo TXT (Formato: Nombre,Llegada,Ráfaga)</label>
+                        <input type="file" id="fileInput" accept=".txt" onchange="loadFromFile()">
+                    </div>
+                    <div class="info-box">
+                        <p><strong>Formato esperado:</strong></p>
+                        <p>P1,0,8<br>P2,1,4<br>P3,2,2</p>
+                    </div>
+                    <div class="form-group">
+                        <label>Vista previa del archivo</label>
+                        <textarea id="filePreview" readonly placeholder="La vista previa aparecerá aquí..."></textarea>
+                    </div>
+                </div>
+
+                <h3 style="margin-top: 20px; margin-bottom: 10px;">Procesos agregados:</h3>
+                <div class="process-list" id="processList"></div>
+            </div>
+
+            <!-- Sección 3: Configuración y Ejecución -->
+            <div class="section">
+                <h2>3. Configurar Simulación</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Quantum para Round Robin (UT)</label>
+                        <input type="number" id="quantum" value="2" min="1" max="100">
+                    </div>
+                    <div class="form-group">
+                        <label>Velocidad</label>
+                        <input type="range" id="speedControl" min="0.5" max="3" step="0.5" value="1" onchange="updateSpeed()">
+                    </div>
+                    <div style="display: flex; align-items: flex-end;">
+                        <span id="speedDisplay">1x</span>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <button class="btn btn-primary" onclick="startSimulation()">▶️ Ejecutar Simulación</button>
+                    <button class="btn btn-secondary" onclick="pauseSimulation()" id="pauseBtn" style="display: none;">⏸️ Pausar</button>
+                    <button class="btn btn-danger" onclick="resetSimulation()">🔄 Reiniciar</button>
+                </div>
+
+                <div id="stepControls" style="display: none;">
+                    <button class="btn btn-secondary" onclick="previousStep()">⏮️ Anterior</button>
+                    <button class="btn btn-secondary" onclick="nextStep()">Siguiente ⏭️</button>
+                    <span id="timeDisplay" style="font-weight: bold; font-size: 1.1em; margin-left: 20px;">Tiempo: 0</span>
+                </div>
+            </div>
+
+            <!-- Sección 4: Resultados -->
+            <div class="section" id="resultsSection" style="display: none;">
+                <h2>4. Resultados de la Simulación</h2>
+
+                <h3>Diagrama de Gantt</h3>
+                <div class="gantt-container">
+                    <div class="gantt" id="ganttChart"></div>
+                </div>
+
+                <h3 style="margin-top: 20px;">Métricas de Rendimiento</h3>
+                <div class="metrics" id="metricsContainer"></div>
+
+                <h3 style="margin-top: 20px;">Detalles por Proceso</h3>
+                <div class="table-container">
+                    <table id="resultsTable">
+                        <thead>
+                            <tr>
+                                <th>Proceso</th>
+                                <th>Llegada</th>
+                                <th>Ráfaga</th>
+                                <th>Inicio</th>
+                                <th>Fin</th>
+                                <th>Espera</th>
+                                <th>Retorno</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsBody"></tbody>
+                    </table>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="exportToCSV()">📥 Descargar CSV</button>
+                    <button class="btn btn-secondary" onclick="printResults()">🖨️ Imprimir</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="scheduler.js"></script>
+</body>
+</html>

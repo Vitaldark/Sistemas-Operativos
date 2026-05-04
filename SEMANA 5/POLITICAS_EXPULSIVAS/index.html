@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Práctica 2 — Planificador de CPU (Expulsivos)</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&family=Sora:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #f7f8fc; /* background */
+  --white:     #ffffff; 
+  --border:    #006d4c;
+  --border2:   #7286cf;
+  --text:      #1e2132;
+  --text-mid:  #5a6080;
+  --text-soft: #9aa0bc;
+  --blue:      #3b5bdb;
+  --blue-lt:   #edf2ff;
+  --blue-dk:   #2f4ac0;
+  --teal:      #0c9488;
+  --teal-lt:   #f0fdfa;
+  --green:     #16a34a;
+  --green-lt:  #f0fdf4;
+  --red:       #dc2626;
+  --red-lt:    #fef2f2;
+  --amber:     #b45309;
+  --amber-lt:  #fffbeb;
+  --shadow-xs: 0 1px 2px rgba(30,33,50,0.06);
+  --shadow-sm: 0 2px 8px rgba(30,33,50,0.08), 0 1px 2px rgba(30,33,50,0.04);
+  --shadow:    0 6px 24px rgba(30,33,50,0.10), 0 2px 6px rgba(30,33,50,0.05);
+  --r:  10px;
+  --r-sm: 7px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+
+body{
+  font-family:'DM Sans',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  padding:28px 16px 64px;
+  line-height:1.5;
+}
+
+.topbar{
+  max-width:1200px;margin:0 auto 28px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding-bottom:20px;border-bottom:1.5px solid var(--border);
+}
+.topbar-left h1{
+  font-family:'Sora',sans-serif;font-size:22px;font-weight:700;
+  color:var(--text);margin-bottom:2px;
+}
+.topbar-left p{font-size:13px;color:var(--text-soft);font-weight:400;}
+.course-tag{
+  background:var(--teal-lt);color:var(--teal);
+  font-size:12px;font-weight:600;padding:5px 14px;
+  border-radius:100px;border:1.5px solid #a7e8dc;
+  white-space:nowrap;
+}
+
+.layout{max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:18px;}
+
+.card{
+  background:var(--white);border:1.5px solid var(--border);
+  border-radius:var(--r);box-shadow:var(--shadow-xs);
+  transition:box-shadow .2s;overflow:hidden;
+}
+.card:hover{box-shadow:var(--shadow-sm);}
+
+.card-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:13px 18px;border-bottom:1.5px solid var(--border);
+  background:#fafbfe;
+}
+.card-title{
+  display:flex;align-items:center;gap:9px;
+  font-size:12px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.6px;color:var(--text-mid);
+}
+.step-badge{
+  width:22px;height:22px;border-radius:50%;
+  background:var(--teal);color:#fff;
+  font-size:11px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.card-body{padding:18px;}
+
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+@media(max-width:900px){.two-col{grid-template-columns:1fr;}}
+
+.policy-grid{display:flex;gap:10px;margin-bottom:14px;}
+.policy-btn{
+  flex:1;padding:14px 10px;
+  border:2px solid var(--border2);background:var(--white);
+  color:var(--text-mid);font-family:'DM Sans',sans-serif;
+  font-size:14px;font-weight:600;cursor:pointer;
+  border-radius:var(--r-sm);transition:all .15s;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+}
+.policy-btn:hover{border-color:var(--border);background:#f9fafb);}
+.policy-btn.active{
+  background:var(--teal);color:#fff;border-color:var(--teal);
+}
+.policy-desc{
+  font-size:11px;color:var(--text-soft);margin-top:4px;
+  line-height:1.3;display:none;
+}
+.policy-btn.active .policy-desc{
+  color:#f0fdfa;display:block;
+}
+
+.form-group{margin-bottom:14px;}
+.form-group label{
+  display:block;font-size:12px;font-weight:600;
+  color:var(--text-mid);margin-bottom:6px;
+}
+.form-group input,
+.form-group select,
+.form-group textarea{
+  width:100%;padding:9px 10px;
+  border:1.5px solid var(--border2);border-radius:var(--r-sm);
+  font-family:'DM Sans',sans-serif;font-size:13px;
+  color:var(--text);background:var(--white);
+  transition:border-color .15s;
+}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus{
+  outline:none;border-color:var(--teal);background:var(--teal-lt);
+}
+
+.btn{
+  padding:10px 16px;
+  border:1.5px solid var(--border2);background:var(--white);
+  color:var(--text-mid);font-family:'DM Sans',sans-serif;
+  font-size:13px;font-weight:600;cursor:pointer;
+  border-radius:var(--r-sm);transition:all .15s;
+  display:inline-flex;align-items:center;gap:6px;
+}
+.btn:hover{border-color:var(--border);background:#f9fafb;}
+.btn.primary{
+  background:var(--teal);color:#fff;border-color:var(--teal);
+}
+.btn.primary:hover{background:var(--teal);border-color:var(--teal);opacity:.9;}
+.btn.danger{
+  background:var(--red-lt);color:var(--red);border-color:#f5d4d4;
+}
+.btn.danger:hover{background:#fde4e4;}
+.btn-group{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+
+.tab-buttons{
+  display:flex;gap:6px;margin-bottom:14px;
+  border-bottom:1.5px solid var(--border);
+}
+.tab-btn{
+  padding:10px 14px;
+  border:none;background:transparent;
+  color:var(--text-mid);font-size:13px;font-weight:600;
+  cursor:pointer;transition:all .15s;
+  border-bottom:2px solid transparent;margin-bottom:-1.5px;
+}
+.tab-btn:hover{color:var(--text);}
+.tab-btn.active{
+  color:var(--teal);border-bottom-color:var(--teal);
+}
+
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+
+.process-table{
+  width:100%;border-collapse:collapse;
+  font-size:13px;
+}
+.process-table thead{background:#fafbfe;}
+.process-table th{
+  padding:10px;text-align:left;
+  font-weight:600;color:var(--text-mid);
+  border-bottom:1.5px solid var(--border);
+  font-size:12px;text-transform:uppercase;
+  letter-spacing:.4px;
+}
+.process-table td{
+  padding:10px;border-bottom:1.5px solid var(--border);
+  color:var(--text);
+}
+.process-table tbody tr:hover{background:#f9fafb;}
+
+.gantt-container{
+  overflow-x:auto;margin-top:14px;
+}
+.gantt{
+  display:block;border:1.5px solid var(--border);
+  border-radius:var(--r-sm);background:#fafbfe;position:relative;
+  min-width:100%;
+}
+.gantt table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.gantt table tr {
+  height: 40px;
+}
+
+.gantt table td,
+.gantt table th {
+  border: 1.5px solid #cdd2e4;
+  padding: 8px;
+  text-align: center;
+  min-width: 40px;
+}
+
+.gantt table th {
+  background: #0c9488;
+  color: white;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.gantt-block{
+  height:100%;display:flex;align-items:center;justify-content:center;
+  color:#fff;font-size:11px;font-weight:600;
+  border-right:1px solid rgba(255,255,255,.3);
+  flex-shrink:0;
+}
+.gantt-time{
+  position:absolute;top:-20px;font-size:11px;
+  font-weight:600;color:var(--text-mid);
+}
+
+.metrics-grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:12px;margin-top:14px;
+}
+.metric-card{
+  padding:12px;background:#f9fafb;border:1.5px solid var(--border);
+  border-radius:var(--r-sm);
+}
+.metric-label{
+  font-size:11px;color:var(--text-soft);text-transform:uppercase;
+  font-weight:600;letter-spacing:.4px;margin-bottom:4px;
+}
+.metric-value{
+  font-size:20px;font-weight:700;color:var(--teal);
+  font-family:'DM Mono',monospace;
+}
+
+.controls{
+  display:flex;gap:8px;align-items:center;margin-top:14px;flex-wrap:wrap;
+}
+.controls input[type="range"]{
+  flex:1;min-width:100px;cursor:pointer;
+}
+
+.status-badge{
+  display:inline-block;padding:4px 10px;
+  font-size:11px;font-weight:600;border-radius:100px;
+  background:var(--green-lt);color:var(--green);
+}
+.status-badge.waiting{background:var(--amber-lt);color:var(--amber);}
+.status-badge.completed{background:var(--green-lt);color:var(--green);}
+.status-badge.running{background:var(--blue-lt);color:var(--blue);}
+
+.info-box{
+  padding:12px;background:var(--blue-lt);border-left:4px solid var(--blue);
+  border-radius:var(--r-sm);margin-bottom:14px;
+  font-size:13px;color:var(--blue-dk);
+}
+
+.time-display{
+  font-family:'DM Mono',monospace;font-size:18px;font-weight:700;
+  color:var(--teal);margin-top:8px;
+}
+
+.process-row{
+  display:grid;grid-template-columns:80px 80px 80px 80px 80px auto;
+  gap:10px;padding:10px;align-items:center;
+  background:#f9fafb;border-radius:var(--r-sm);
+  margin-bottom:8px;border:1.5px solid var(--border);
+}
+
+.process-row-header{
+  font-size:11px;font-weight:600;color:var(--text-soft);
+  text-transform:uppercase;letter-spacing:.4px;
+}
+
+@media(max-width:600px){
+  .policy-grid{flex-direction:column;}
+  .two-col{grid-template-columns:1fr;}
+  .process-row{grid-template-columns:1fr;}
+  .metrics-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <h1>Práctica 2 — Simulador de Planificación de CPU</h1>
+    <p>Algoritmos expulsivos: SRT y Round Robin</p>
+  </div>
+  <div class="course-tag">Sistemas Operativos</div>
+</div>
+
+<div class="layout">
+
+  <!-- PASO 1: Seleccionar la política de planificación (SRT o RR) -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">
+        <div class="step-badge">1</div>
+        Seleccionar Política de Planificación
+      </div>
+    </div>
+    <div class="card-body">
+      <!-- Botones para elegir entre SRT y RR -->
+      <div class="policy-grid" id="policyGrid">
+        <!-- Botón SRT (Shortest Remaining Time) -->
+        <button class="policy-btn" data-policy="srt" onclick="selectPolicy(this)">
+          <span>SRT</span>
+          <span class="policy-desc">Shortest Remaining Time</span>
+        </button>
+        <!-- Botón RR (Round Robin) -->
+        <button class="policy-btn" data-policy="rr" onclick="selectPolicy(this)">
+          <span>RR</span>
+          <span class="policy-desc">Round Robin</span>
+        </button>
+      </div>
+      <!-- Información sobre el algoritmo seleccionado se muestra aquí -->
+      <div class="info-box" id="policyInfo"></div>
+    </div>
+  </div>
+
+  <!-- PASO 2: Entrada de datos (Manual o desde archivo) -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">
+        <div class="step-badge">2</div>
+        Entrada de Datos
+      </div>
+    </div>
+    <div class="card-body">
+      <!-- Tabs para cambiar entre ingreso manual y carga de archivo -->
+      <div class="tab-buttons">
+        <!-- Tab para ingreso manual -->
+        <button class="tab-btn active" onclick="switchTab(this, 'manual')">Ingreso Manual</button>
+        <!-- Tab para cargar desde archivo -->
+        <button class="tab-btn" onclick="switchTab(this, 'file')">Cargar Archivo TXT</button>
+      </div>
+
+      <!-- CONTENIDO TAB 1: Ingreso Manual de procesos -->
+      <div id="manual" class="tab-content active">
+        <div class="two-col">
+          <div>
+            <div class="form-group">
+              <label>Nombre del Proceso</label>
+              <input type="text" id="processName" placeholder="P1, P2, etc." value="P">
+            </div>
+            <div class="form-group">
+              <label>Tiempo de Llegada</label>
+              <input type="number" id="arrivalTime" placeholder="0" value="0" min="0">
+            </div>
+            <div class="form-group">
+              <label>Ráfaga de CPU</label>
+              <input type="number" id="burstTime" placeholder="5" value="5" min="1">
+            </div>
+            <div class="form-group" id="quantumGroup" style="display:none;">
+              <label>Quantum (para RR)</label>
+              <input type="number" id="quantum" placeholder="3" value="3" min="1">
+            </div>
+          </div>
+          <div>
+            <div class="form-group">
+              <label>Procesos agregados</label>
+              <textarea id="processListDisplay" readonly rows="6" style="resize:none;background:#f9fafb;"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="btn-group">
+          <button class="btn primary" onclick="addProcess()">+ Agregar Proceso</button>
+          <button class="btn danger" onclick="clearProcesses()">Limpiar</button>
+        </div>
+      </div>
+
+      <!-- Tab: Cargar Archivo -->
+      <div id="file" class="tab-content">
+        <div class="form-group">
+          <label>Cargar archivo TXT (formato: Nombre,Llegada,Ráfaga)</label>
+          <input type="file" id="fileInput" accept=".txt" onchange="loadFromFile()">
+        </div>
+        <div class="info-box">
+          <strong>Formato esperado:</strong><br>
+          P1,0,8<br>
+          P2,1,4<br>
+          P3,2,2
+        </div>
+        <textarea id="filePreview" readonly rows="6" placeholder="Vista previa del archivo..." style="resize:none;background:#f9fafb;margin-top:12px;"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- Paso 3: Configuración y Ejecución -->
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">
+        <div class="step-badge">3</div>
+        Configuración y Simulación
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="two-col">
+        <div>
+          <div class="form-group">
+            <label>Quantum (RR)</label>
+            <input type="number" id="globalQuantum" value="3" min="1" max="100">
+          </div>
+          <div class="info-box" id="simulationInfo" style="display:none;"></div>
+        </div>
+        <div>
+          <div class="btn-group" style="margin-top:0;">
+            <button class="btn primary" onclick="startSimulation()">▶ Ejecutar Simulación</button>
+            <button class="btn" onclick="pauseSimulation()" id="pauseBtn" style="display:none;">⏸ Pausar</button>
+            <button class="btn" onclick="resetSimulation()">↻ Reiniciar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls" id="controlsContainer" style="display:none;">
+        <button class="btn" onclick="prevStep()">⏮ Anterior</button>
+        <button class="btn" onclick="nextStep()">Siguiente ⏭</button>
+        <label style="display:flex;align-items:center;gap:8px;">
+          Velocidad:
+          <input type="range" id="speedSlider" min="0.25" max="3" step="0.25" value="1" onchange="updateSpeed()">
+          <span id="speedValue">1x</span>
+        </label>
+      </div>
+
+      <div class="time-display" id="timeDisplay" style="display:none;">
+        Tiempo: <span id="currentTime">0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Paso 4: Resultados -->
+  <div class="card" id="resultsCard" style="display:none;">
+    <div class="card-head">
+      <div class="card-title">
+        <div class="step-badge">4</div>
+        Diagrama de Gantt y Métricas
+      </div>
+    </div>
+    <div class="card-body">
+      <div style="overflow-x:auto;">
+        <div class="gantt" id="ganttChart"></div>
+      </div>
+
+      <div class="metrics-grid" id="metricsGrid"></div>
+
+      <h3 style="margin-top:24px;margin-bottom:12px;font-size:14px;">Detalles por Proceso</h3>
+      <div style="overflow-x:auto;">
+        <table class="process-table" id="resultsTable">
+          <thead>
+            <tr>
+              <th>Proceso</th>
+              <th>Llegada</th>
+              <th>Ráfaga</th>
+              <th>Inicio</th>
+              <th>Fin</th>
+              <th>Espera</th>
+              <th>Retorno</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody id="resultsBody"></tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:20px;">
+        <button class="btn primary" onclick="exportResults()">📥 Descargar Resultados</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="scheduler.js"></script>
+
+</body>
+</html>
