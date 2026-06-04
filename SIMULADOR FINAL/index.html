@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulador de Sistemas Operativos</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="topbar-brand">
+      <div class="brand-icon">⚙</div>
+      <span class="brand-name">Simulador de Sistemas Operativos</span>
+    </div>
+    <div class="topbar-tabs">
+      <button class="tab-pill active" onclick="showPage('planificacion',this)">
+        <span class="tab-icon">⚙</span> Planificación CPU
+      </button>
+      <button class="tab-pill" onclick="showPage('memoria',this)">
+        <span class="tab-icon">🗃</span> Gestión de Memoria
+      </button>
+    </div>
+    <div class="course-tag">Sistemas Operativos</div>
+  </div>
+
+  <div id="page-planificacion" class="page active">
+    <div class="main-layout">
+
+      <div class="control-sidebar">
+        <div class="compact-section">
+          <div class="compact-title">Algoritmo</div>
+          <div class="policy-grid-compact" id="policyGrid">
+            <button class="policy-btn-compact active" onclick="selectPolicy('FCFS',this)" title="First Come First Served">FCFS</button>
+            <button class="policy-btn-compact" onclick="selectPolicy('SJF',this)" title="Shortest Job First">SJF</button>
+            <button class="policy-btn-compact" onclick="selectPolicy('SRT',this)" title="Shortest Remaining Time">SRT</button>
+            <button class="policy-btn-compact" onclick="selectPolicy('RR',this)" title="Round Robin">RR</button>
+            <button class="policy-btn-compact" onclick="selectPolicy('PRIORITY',this)" title="Prioridad">PRIO</button>
+          </div>
+          <div class="info-mini" id="policyInfo">FCFS — FIFO</div>
+        </div>
+
+        <div class="compact-section">
+          <div class="compact-title">Demo / Archivos</div>
+          <div class="btn-group-compact">
+            <button class="btn-sm" onclick="loadDemo()">8 Proc</button>
+            <button class="btn-sm" onclick="loadDemoLarge()">15 Proc</button>
+            <button class="btn-sm" onclick="document.getElementById('fileInput').click()">📁 CSV/TXT</button>
+            <input type="file" id="fileInput" accept=".csv,.txt" style="display:none" onchange="loadFromFile()">
+          </div>
+        </div>
+
+        <div class="compact-section">
+          <div class="compact-title">Agregar Proceso</div>
+          <input type="text" id="procName" value="P0" placeholder="Nombre">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px;">
+            <input type="number" id="procArrival" value="0" placeholder="Llegada">
+            <input type="number" id="procBurst" value="4" placeholder="Ráfaga">
+          </div>
+          <input type="number" id="procPriority" value="1" placeholder="Prioridad" style="margin-top:4px;">
+          <button class="btn primary" style="width:100%;margin-top:6px;" onclick="addProc()">+ Agregar</button>
+          <div id="msgProc" class="msg"></div>
+        </div>
+
+        <div class="compact-section" style="flex:1; display:flex; flex-direction:column;">
+          <div class="compact-title">Lista de Procesos (<span id="procCount">0</span>)</div>
+          <div id="procList" class="proc-list-compact"></div>
+          <button class="btn danger" style="width:100%;margin-top:4px;" onclick="clearProcs()">Limpiar</button>
+        </div>
+
+        <div class="compact-section">
+          <div class="compact-title">Simulación</div>
+          <div class="btn-group-compact">
+            <button class="btn primary" style="flex:1;" id="startBtn" onclick="startSim()">▶ Iniciar</button>
+            <button class="btn" style="flex:1;" id="pauseBtn" onclick="pauseSim()" disabled>⏸ Pausar</button>
+          </div>
+          <button class="btn" style="width:100%;margin-top:4px;" onclick="resetSim()">↻ Reiniciar</button>
+          <div style="margin-top:8px;">
+            <label class="field-label">Velocidad: <span id="speedVal">1x</span></label>
+            <input type="range" min="0.5" max="5" step="0.5" value="1" onchange="setSpeed(this.value)" style="width:100%;margin-top:4px;">
+          </div>
+        </div>
+      </div>
+
+      <div class="main-content">
+        <div class="viz-card">
+          <div class="viz-header">
+            <span>▌▌▌ Secuencia de Ejecución — Código de Barras 1D</span>
+            <span class="viz-badge" id="simStatus">Listo</span>
+          </div>
+          <div class="barcode-wrap" id="barcodeWrap">
+            <div class="barcode-placeholder">
+              <div class="bc-placeholder-icon">▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌▌</div>
+              <div>Ejecuta la simulación para ver la secuencia cronológica de procesos</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="viz-card gantt-card" style="flex:1;min-height:0;">
+          <div class="viz-header gantt-header-clickable" onclick="showGanttModal()">
+            <span>📊 Diagrama de Gantt Estático</span>
+            <span class="btn-detail pulse-hint">⤢ Ver Simulación Detallada e Informes</span>
+          </div>
+          <div class="gantt-outer" id="ganttOuter">
+            <div class="gantt-table-wrap">
+              <table class="gantt-table" id="ganttTable" style="width:100%;table-layout:fixed;">
+                <thead id="ganttHead"></thead>
+                <tbody id="ganttBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="metrics-sidebar">
+        <div class="metrics-compact">
+          <div class="metric-mini">
+            <div class="metric-label">Tiempo Total</div>
+            <div class="metric-value" id="mTotal">—</div>
+            <div class="metric-unit">ut</div>
+          </div>
+          <div class="metric-mini">
+            <div class="metric-label">Espera Prom.</div>
+            <div class="metric-value" id="mWait">—</div>
+            <div class="metric-unit">ut</div>
+          </div>
+          <div class="metric-mini">
+            <div class="metric-label">Retorno Prom.</div>
+            <div class="metric-value" id="mReturn">—</div>
+            <div class="metric-unit">ut</div>
+          </div>
+          <div class="metric-mini accent-green">
+            <div class="metric-label">CPU Usado</div>
+            <div class="metric-value" id="mUtil">—</div>
+            <div class="metric-unit">%</div>
+          </div>
+          <div class="metric-mini">
+            <div class="metric-label">Ctx Switches</div>
+            <div class="metric-value" id="mContext">—</div>
+            <div class="metric-unit">n</div>
+          </div>
+          <div class="metric-mini">
+            <div class="metric-label">Procesos</div>
+            <div class="metric-value" id="mProcs">—</div>
+            <div class="metric-unit">n</div>
+          </div>
+        </div>
+
+        <div class="compact-section" style="margin-top:8px;">
+          <div class="compact-title">En Ejecución</div>
+          <div class="running-display">
+            <div class="running-time">Tiempo CPU: <strong id="clockVal">0</strong> ut</div>
+            <div class="running-proc">Proceso: <span id="runningProc" class="proc-chip">—</span></div>
+          </div>
+        </div>
+
+        <div class="compact-section">
+          <div class="compact-title">Algoritmo Activo</div>
+          <div class="info-mini" id="policyInfoDetail">FCFS — Los procesos se ejecutan en orden FIFO</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="page-memoria" class="page">
+    <div class="main-layout">
+
+      <div class="control-sidebar">
+        <div class="compact-section">
+          <div class="compact-title">Algoritmo de Asignación</div>
+          <div class="algo-grid">
+            <button class="algo-btn active" id="mAlgoFirst" onclick="selectMemAlgo('first',this)">First Fit</button>
+            <button class="algo-btn" id="mAlgoBest" onclick="selectMemAlgo('best',this)">Best Fit</button>
+            <button class="algo-btn" id="mAlgoWorst" onclick="selectMemAlgo('worst',this)">Worst Fit</button>
+            <button class="algo-btn" id="mAlgoBuddy" onclick="selectMemAlgo('buddy',this)">Buddy</button>
+          </div>
+          <div class="info-mini" id="memAlgoInfo">Primer Ajuste — Asigna el primer bloque libre suficiente.</div>
+        </div>
+
+        <div class="compact-section">
+          <div class="compact-title">Configuración</div>
+          <label class="field-label">Tamaño Total (KB)</label>
+          <input type="number" id="memTotal" value="1024" min="64" max="8192" step="64">
+          <div id="buddyOrderGroup" style="display:none;margin-top:4px;">
+            <label class="field-label">Quantum Gemelos (KB)</label>
+            <input type="number" id="buddyMin" value="32" min="8" max="256" step="8">
+          </div>
+          <button class="btn primary" style="width:100%;margin-top:6px;" onclick="initMemory()">Inicializar Memoria</button>
+        </div>
+
+        <div class="compact-section">
+          <div class="compact-title">Cargar Procesos</div>
+          <div class="btn-group-compact" style="margin-bottom:6px;">
+            <button class="btn-sm" onclick="document.getElementById('memFileInput').click()">📁 CSV/TXT</button>
+            <button class="btn-sm" onclick="loadMemDemo()">Demo</button>
+            <input type="file" id="memFileInput" accept=".csv,.txt" style="display:none" onchange="loadMemFromFile()">
+          </div>
+
+          <label class="field-label">Nombre</label>
+          <input type="text" id="mProcName" value="P0" placeholder="Nombre">
+          <label class="field-label" style="margin-top:4px;">Tamaño (KB)</label>
+          <input type="number" id="mProcSize" value="128" min="1" placeholder="Tamaño (KB)">
+          <button class="btn teal" style="width:100%;margin-top:6px;" onclick="addMemProcToQueue()">+ Agregar a Cola</button>
+          <div id="msgMem" class="msg"></div>
+        </div>
+
+        <div class="compact-section" style="flex:1; display:flex; flex-direction:column;">
+          <div class="compact-title">Cola de Espera (<span id="memQueueCount">0</span>)</div>
+          <div id="memQueueList" class="proc-list-compact">
+            <div class="empty-hint">Agrega procesos manualmente o carga un archivo.</div>
+          </div>
+          <button class="btn danger" style="width:100%;margin-top:4px;" onclick="clearMemQueue()">Limpiar Cola</button>
+        </div>
+
+        <div class="compact-section">
+          <button class="btn primary" style="width:100%;" id="memStartBtn" onclick="startMemSim()">▶ Iniciar Asignación</button>
+          <button class="btn" style="width:100%;margin-top:4px;" onclick="resetMemSim()">↻ Reiniciar</button>
+          <div style="margin-top:8px;">
+            <label class="field-label">Velocidad: <span id="memSpeedVal">1x</span></label>
+            <input type="range" min="0.5" max="5" step="0.5" value="1" onchange="setMemSpeed(this.value)" style="width:100%;margin-top:4px;">
+          </div>
+        </div>
+      </div>
+
+      <div class="main-content">
+        <div class="viz-card">
+          <div class="viz-header">
+            <span>🗺 Vista Lineal de Memoria RAM — <span id="memTotalLabel">1024</span> KB</span>
+            <span class="viz-badge" id="memSimStatus">Sin inicializar</span>
+          </div>
+          <div style="padding:14px 16px;">
+            <div class="mem-bar-outer">
+              <div class="mem-bar-track" id="memBarTrack">
+                <div class="mem-bar-empty">Inicializa la memoria para proyectar la barra de asignación lineal horizontal</div>
+              </div>
+            </div>
+            <div class="mem-bar-legend" id="memBarLegend"></div>
+          </div>
+        </div>
+
+        <div class="viz-card">
+          <div class="viz-header">
+            <span>📋 Procesos Residentes en RAM</span>
+            <button class="btn-detail" onclick="deallocateSelected()">Liberar Seleccionado</button>
+          </div>
+          <div id="memProcTable" style="padding:10px 16px; overflow-y:auto; max-height:150px;">
+            <div class="empty-hint">Sin procesos asignados actualmente.</div>
+          </div>
+        </div>
+
+        <div class="viz-card" style="flex:1;min-height:0;">
+          <div class="viz-header" style="background: linear-gradient(135deg, #0f7f75, #0a5e57);">
+            <span>⚡ Monitor de Eventos en Tiempo Real — Memoria</span>
+            <span class="viz-badge" id="memSimRtStatus">En espera</span>
+          </div>
+          <div id="memSimulation" class="sim-log">
+            <div class="sim-empty-state">
+              <div class="sim-empty-icon">💾</div>
+              <div>Inicia la simulación para inspeccionar el mapeo cronológico paso a paso...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="metrics-sidebar">
+        <div class="compact-section">
+          <div class="compact-title">Resumen de RAM</div>
+          <div class="info-box-mini">
+            <div class="kv-row"><span>Total</span><strong id="memConfigSummary">—</strong></div>
+            <div class="kv-row"><span>Libre</span><strong id="memFreeSummary" style="color:var(--green)">—</strong></div>
+            <div class="kv-row"><span>Uso</span><strong id="memUseSummary">—</strong></div>
+          </div>
+        </div>
+
+        <div class="compact-section">
+          <div class="compact-title">Métricas de Fragmentación</div>
+          <div class="metrics-compact">
+            <div class="metric-mini">
+              <div class="metric-label">Asignado</div>
+              <div class="metric-value sm" id="statUsed">—</div>
+            </div>
+            <div class="metric-mini accent-green">
+              <div class="metric-label">Libre Total</div>
+              <div class="metric-value sm" id="statFree">—</div>
+            </div>
+            <div class="metric-mini accent-amber">
+              <div class="metric-label">Frag. Interna</div>
+              <div class="metric-value sm" id="statFragIn">—</div>
+            </div>
+            <div class="metric-mini accent-red">
+              <div class="metric-label">Frag. Externa</div>
+              <div class="metric-value sm" id="statFragEx">—</div>
+            </div>
+          </div>
+          <div style="margin-top:8px;">
+            <div class="util-row"><span class="util-lbl">% RAM</span><div class="util-track"><div class="util-fill" id="fillTotal"></div></div><span class="util-pct" id="pctTotal">0%</span></div>
+            <div class="util-row"><span class="util-lbl">% F. Int</span><div class="util-track"><div class="util-fill warn" id="fillFragIn"></div></div><span class="util-pct" id="pctFragIn">0%</span></div>
+            <div class="util-row"><span class="util-lbl">% F. Ex</span><div class="util-track"><div class="util-fill danger" id="fillFragEx"></div></div><span class="util-pct" id="pctFragEx">0%</span></div>
+          </div>
+        </div>
+
+        <div class="compact-section">
+          <div class="compact-title">Segmentos Libres (<span id="statFreeBlocks">0</span>)</div>
+          <div id="freeBlocksTable" style="max-height:100px;overflow-y:auto;"></div>
+        </div>
+
+        <div class="compact-section">
+          <div class="compact-title">Terminal del Sistema</div>
+          <div class="algo-log" id="algoLog"><span class="log-info">Kernel de Memoria Listo.</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="ganttModal" onclick="closeGanttModal(event)">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div>
+          <div style="font-size:16px;font-weight:800;">Simulación Dinámica en Tiempo Real — <span id="modalAlgoLabel">FCFS</span></div>
+          <div style="font-size:11px;font-weight:400;opacity:.75;margin-top:2px;">Inspección del comportamiento interno del planificador</div>
+        </div>
+        <button class="modal-close" onclick="closeGanttModal()">✕</button>
+      </div>
+      <div class="modal-body" id="ganttModalBody">
+        <div class="modal-empty">Ejecuta la simulación primero para ver el detalle de los hilos.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tooltip" id="tooltip"></div>
+  <script src="script.js"></script>
+</body>
+</html>
