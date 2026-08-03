@@ -1,0 +1,1875 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador de Gestión de Memoria y Planificación de CPU</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f1e4;
+  --surface:#eee5cf;
+  --panel:#fffdf6;
+  --panel-2:#f1e9d4;
+  --border:#e2d6b8;
+  --border2:#c9b98d;
+  --text:#2b2620;
+  --text-mid:#6c6248;
+  --text-soft:#9a8f70;
+  --blue:#3568d4;
+  --blue-dk:#274fa8;
+  --blue-lt:rgba(53,104,212,0.13);
+  --teal:#0e8c7d;
+  --teal-lt:rgba(14,140,125,0.13);
+  --green:#1f9d5c;
+  --green-lt:rgba(31,157,92,0.12);
+  --red:#c8422c;
+  --red-lt:rgba(200,66,44,0.12);
+  --amber:#b17607;
+  --amber-lt:rgba(177,118,7,0.13);
+  --purple:#7358c9;
+  --purple-lt:rgba(115,88,201,0.13);
+  --fat:#c53a5b;
+  --fat-lt:rgba(197,58,91,0.13);
+  --r:10px; --r-sm:6px;
+  --font-body:'Inter',sans-serif;
+  --font-display:'Space Grotesk',sans-serif;
+  --font-mono:'JetBrains Mono',monospace;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:var(--font-body);background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex;flex-direction:column;position:relative;}
+body::before{content:'';position:fixed;top:0;left:0;right:0;height:3px;z-index:50;
+  background:linear-gradient(90deg,var(--blue),var(--teal) 33%,var(--purple) 66%,var(--fat));}
+
+/* TOPBAR */
+.topbar{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:0 22px;height:54px;display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;margin-top:3px;
+}
+.brand{display:flex;align-items:baseline;gap:10px;}
+.brand-name{font-family:var(--font-display);font-weight:700;font-size:15px;letter-spacing:-.2px;color:var(--text);}
+.brand-tag{font-size:9.5px;background:var(--panel-2);border:1px solid var(--border2);color:var(--text-mid);padding:3px 10px;border-radius:4px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;font-family:var(--font-mono);}
+
+/* LAYOUT */
+.workspace{flex:1;display:grid;grid-template-columns:278px 1fr 306px;overflow:hidden;}
+
+/* SIDEBAR */
+.sidebar{
+  background:var(--surface);border-right:1px solid var(--border);
+  padding:12px 10px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;
+}
+.sidebar-right{
+  background:var(--surface);border-left:1px solid var(--border);
+  padding:12px 10px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;
+}
+.main{padding:14px;display:flex;flex-direction:column;gap:12px;overflow-y:auto;background:var(--bg);}
+
+/* SECTION */
+.section{
+  background:var(--panel);border:1px solid var(--border);border-radius:var(--r);
+  padding:10px;flex-shrink:0;position:relative;
+}
+.section-title{
+  font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;
+  color:var(--text-soft);margin-bottom:8px;font-family:var(--font-mono);
+  display:flex;align-items:center;gap:6px;
+}
+.section-title::before{content:'';width:3px;height:9px;background:var(--border2);border-radius:1px;flex-shrink:0;}
+
+/* INPUTS */
+input[type=text],input[type=number]{
+  width:100%;padding:6px 10px;border:1px solid var(--border2);border-radius:var(--r-sm);
+  font-size:12px;background:var(--panel-2);color:var(--text);font-family:var(--font-body);
+  outline:none;transition:border-color .2s;
+}
+input[type=text]:focus,input[type=number]:focus{border-color:var(--blue);}
+input[type=range]{width:100%;accent-color:var(--blue);cursor:pointer;}
+
+/* BUTTONS */
+.btn{
+  padding:7px 12px;border:1px solid var(--border2);border-radius:var(--r-sm);
+  font-size:11px;font-weight:600;cursor:pointer;background:var(--panel-2);color:var(--text);
+  transition:all .15s;font-family:var(--font-body);
+}
+.btn:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-lt);}
+.btn.primary{background:var(--blue);color:#fff;border-color:var(--blue);}
+.btn.primary:hover{background:var(--blue-dk);color:#fff;}
+.btn.teal{background:var(--teal);color:#062622;border-color:var(--teal);}
+.btn.danger{background:var(--red-lt);color:var(--red);border-color:var(--red);}
+.btn.success{background:var(--green-lt);color:var(--green);border-color:var(--green);}
+.btn:disabled{opacity:.35;cursor:not-allowed;}
+.btn-row{display:flex;gap:6px;}
+.btn-row .btn{flex:1;}
+.btn-sm{padding:5px 8px;font-size:10px;font-weight:600;border:1px solid var(--border2);background:var(--panel-2);color:var(--text-mid);border-radius:var(--r-sm);cursor:pointer;transition:all .15s;}
+.btn-sm:hover{border-color:var(--blue);color:var(--blue);}
+.btn-xs{padding:2px 7px;font-size:9px;background:transparent;border:1px solid var(--border2);color:var(--text-soft);border-radius:3px;cursor:pointer;}
+.btn-xs:hover{border-color:var(--red);color:var(--red);}
+
+/* POLICY GRID */
+.policy-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:3px;}
+.policy-btn{
+  padding:6px 2px;font-size:10px;font-weight:700;background:var(--panel-2);
+  border:1px solid var(--border2);border-radius:5px;cursor:pointer;color:var(--text-mid);
+  transition:all .15s;text-align:center;
+}
+.policy-btn.active{background:var(--blue);color:#fff;border-color:var(--blue);}
+
+/* ALGO GRID */
+.algo-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;}
+.algo-btn{
+  padding:6px;font-size:10px;font-weight:600;background:var(--panel-2);
+  border:1px solid var(--border2);border-radius:5px;cursor:pointer;color:var(--text-mid);
+  transition:all .15s;
+}
+.algo-btn.active{background:var(--teal);color:#062622;border-color:var(--teal);}
+.algo-btn:disabled{opacity:.3;pointer-events:none;}
+
+/* PROC LIST */
+.proc-list{flex:1;overflow-y:auto;max-height:200px;display:flex;flex-direction:column;gap:4px;}
+.proc-item{
+  padding:6px 8px;border-radius:6px;font-size:11px;
+  border:1px solid var(--border);background:var(--panel-2);
+  display:flex;justify-content:space-between;align-items:center;
+  transition:all .15s;
+}
+.proc-item:hover{border-color:var(--border2);}
+
+/* FIELD */
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px;}
+.field-label{font-size:10px;font-weight:600;color:var(--text-mid);margin-bottom:3px;display:block;}
+.msg{font-size:10px;padding:4px 6px;border-radius:4px;display:none;margin-top:4px;}
+.msg.show{display:block;}
+.msg-ok{background:var(--green-lt);color:var(--green);}
+.msg-err{background:var(--red-lt);color:var(--red);}
+
+/* VIZ CARD */
+.viz-card{
+  background:var(--panel);border:1px solid var(--border);border-radius:var(--r);
+  overflow:hidden;flex-shrink:0;
+}
+.viz-card.grow{flex:1;min-height:0;display:flex;flex-direction:column;}
+.viz-header{
+  background:linear-gradient(120deg,var(--blue-dk),var(--blue));
+  color:#fff;padding:10px 14px;font-size:11px;font-weight:600;font-family:var(--font-display);letter-spacing:.2px;
+  display:flex;justify-content:space-between;align-items:center;flex-shrink:0;
+}
+.viz-header.teal-h{background:linear-gradient(120deg,#0d7568,var(--teal));}
+.viz-header.purple-h{background:linear-gradient(120deg,#5936a8,var(--purple));color:#fff;}
+.viz-header.fat-h{background:linear-gradient(120deg,#9d174d,var(--fat));}
+.viz-badge{background:rgba(255,255,255,.18);padding:2px 9px;border-radius:10px;font-size:9px;font-weight:700;font-family:var(--font-mono);}
+
+/* BARCODE */
+.barcode-wrap{padding:12px 14px;background:var(--bg);}
+.barcode-track{
+  width:100%;height:48px;border-radius:6px;overflow:hidden;
+  display:flex;border:1px solid var(--border);background:var(--panel-2);
+}
+.bc-seg{height:100%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;border-right:1px solid rgba(0,0,0,.25);transition:width .15s;}
+
+/* MEMORY MAP */
+.mem-track{
+  width:100%;height:56px;border-radius:6px;overflow:hidden;
+  display:flex;border:1px solid var(--border);background:var(--panel-2);
+}
+.mem-seg{
+  height:100%;display:flex;align-items:center;justify-content:center;
+  font-size:9px;font-weight:700;transition:width .25s ease;
+  border-right:1px solid rgba(0,0,0,.25);cursor:pointer;position:relative;
+}
+.mem-seg:hover{filter:brightness(1.2);}
+.mem-hint{font-size:9.5px;color:var(--text-soft);margin-top:6px;font-family:var(--font-mono);min-height:12px;}
+
+/* PROCESS TABLE */
+.ptable{width:100%;border-collapse:collapse;font-size:11px;}
+.ptable th,.ptable td{padding:5px 8px;border-bottom:1px solid var(--border);text-align:left;}
+.ptable th{color:var(--text-soft);font-size:9px;text-transform:uppercase;letter-spacing:.5px;background:var(--panel-2);}
+.ptable tbody tr:hover{background:var(--panel-2);}
+
+/* METRICS */
+.metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.metric-box{
+  background:var(--panel-2);border:1px solid var(--border);border-left:3px solid var(--blue);
+  padding:8px;border-radius:var(--r-sm);text-align:center;
+}
+.metric-box.teal-b{border-left-color:var(--teal);}
+.metric-box.green-b{border-left-color:var(--green);}
+.metric-box.amber-b{border-left-color:var(--amber);}
+.metric-box.red-b{border-left-color:var(--red);}
+.metric-box.purple-b{border-left-color:var(--purple);}
+.m-label{font-size:8px;text-transform:uppercase;color:var(--text-soft);letter-spacing:.4px;}
+.m-value{font-size:17px;font-weight:700;font-family:var(--font-mono);color:var(--blue);}
+.m-value.teal{color:var(--teal);}
+.m-value.green{color:var(--green);}
+.m-value.amber{color:var(--amber);}
+.m-value.sm{font-size:13px;}
+.m-unit{font-size:8px;color:var(--text-soft);}
+
+/* UTIL BAR */
+.util-row{display:flex;align-items:center;gap:6px;font-size:10px;margin-top:4px;}
+.util-lbl{width:50px;color:var(--text-mid);}
+.util-track{flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden;}
+.util-fill{height:100%;background:var(--blue);transition:width .4s;border-radius:3px;}
+.util-pct{width:32px;text-align:right;font-family:var(--font-mono);font-size:9px;}
+
+/* EVENT LOG */
+.event-log{
+  flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:4px;
+  background:var(--bg);font-family:var(--font-mono);font-size:10px;min-height:0;
+}
+.ev{padding:5px 8px;border-radius:4px;border-left:3px solid var(--border2);line-height:1.5;background:var(--panel-2);}
+.ev.alloc{border-left-color:var(--teal);color:var(--teal);}
+.ev.free{border-left-color:var(--amber);color:var(--amber);}
+.ev.exec{border-left-color:var(--blue);color:var(--blue);}
+.ev.done{border-left-color:var(--green);color:var(--green);}
+.ev.idle{border-left-color:var(--text-soft);color:var(--text-soft);}
+.ev.err{border-left-color:var(--red);color:var(--red);}
+.ev-detail{font-size:9px;color:var(--text-soft);margin-top:1px;}
+
+/* STATUS DISPLAY */
+.status-box{
+  background:var(--panel-2);border:1px solid var(--border);padding:8px 10px;
+  border-radius:var(--r-sm);font-size:12px;display:flex;justify-content:space-between;align-items:center;
+}
+.chip{display:inline-block;padding:2px 8px;border-radius:4px;font-family:var(--font-mono);font-weight:700;font-size:11px;}
+
+/* MASS GEN */
+.gen-section{background:var(--panel-2);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px;}
+
+/* PROGRESS BAR */
+.progress-wrap{background:var(--panel-2);border:1px solid var(--border);border-radius:4px;overflow:hidden;height:8px;margin-top:4px;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--teal));transition:width .3s;border-radius:4px;}
+
+/* MEMORY RESIDENT TABLE */
+.resident-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:4px 6px;border-radius:4px;font-size:10px;border:1px solid var(--border);
+  margin-bottom:3px;cursor:pointer;transition:background .15s;
+}
+.resident-row:hover{background:var(--panel-2);}
+.resident-row.executing{background:var(--blue-lt);border-color:var(--blue);}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+
+/* INFO BOX */
+.info-mini{font-size:10px;color:var(--text-mid);padding:5px 7px;background:var(--panel-2);border-radius:4px;border:1px solid var(--border);line-height:1.4;}
+
+/* PIPELINE VIZ */
+.pipeline{display:flex;gap:4px;margin-top:6px;}
+.stage{
+  flex:1;background:var(--panel-2);border:1px solid var(--border);border-radius:5px;
+  padding:6px 4px;text-align:center;font-size:9px;
+}
+.stage-val{font-family:var(--font-mono);font-size:14px;font-weight:700;margin-top:2px;}
+
+/* GANTT MINI */
+.gantt-mini{overflow-x:auto;max-height:160px;overflow-y:auto;}
+.gantt-mini table{border-collapse:collapse;font-family:var(--font-mono);font-size:10px;width:100%;}
+.gantt-mini th,.gantt-mini td{border:1px solid var(--border);padding:3px 5px;text-align:center;white-space:nowrap;}
+.gantt-mini th{background:var(--panel-2);color:var(--text-soft);font-size:9px;}
+
+/* QUEUE BADGES */
+.queue-badges{display:flex;flex-wrap:wrap;gap:3px;max-height:80px;overflow-y:auto;}
+.q-badge{padding:2px 7px;border-radius:20px;font-size:9px;font-weight:700;font-family:var(--font-mono);}
+
+/* TIPO DE ASIGNACIÓN (7 métodos) */
+.alloc-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;}
+.alloc-btn{
+  padding:7px 3px;font-size:9.5px;font-weight:700;background:var(--panel-2);
+  border:1px solid var(--border2);border-radius:5px;cursor:pointer;color:var(--text-mid);
+  transition:all .15s;text-align:center;line-height:1.3;
+}
+.alloc-btn.active{background:var(--purple);color:#fff;border-color:var(--purple);}
+.alloc-btn:disabled{opacity:.3;pointer-events:none;}
+.algo-grid.disabled{opacity:.35;pointer-events:none;}
+
+/* BLOQUES (ENLAZADA / INDEXADA / MULTINIVEL / FAT) */
+.block-track{
+  width:100%;min-height:56px;max-height:210px;border-radius:6px;overflow-y:auto;position:relative;
+  border:1px solid var(--border);background:var(--panel-2);padding:6px;
+  display:grid;gap:3px;grid-template-columns:repeat(var(--cols,16),1fr);
+  align-content:start;
+}
+.block-cell{
+  aspect-ratio:1;border-radius:3px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-size:7px;font-weight:700;color:#fff;position:relative;cursor:pointer;
+  border:1px solid rgba(0,0,0,0.2);transition:transform .15s;overflow:hidden;
+}
+.block-cell:hover{transform:scale(1.15);z-index:2;}
+.block-cell.free{background:repeating-linear-gradient(45deg,var(--bg),var(--bg) 3px,var(--panel) 3px,var(--panel) 6px)!important;color:var(--text-soft);}
+.block-cell.blk-index{border:2px dashed #fff !important;box-shadow:0 0 5px rgba(255,255,255,0.7);}
+.block-cell.blk-master{border:2px solid #fff !important;box-shadow:0 0 6px rgba(255,255,255,0.85);}
+.block-cell.blk-second{border:2px dashed rgba(255,255,255,.75) !important;}
+.block-links{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;z-index:1;}
+.blk-tag{font-size:6px;font-weight:800;opacity:.9;letter-spacing:.3px;}
+.blk-name{font-size:9px;}
+.blk-sub{font-size:6.5px;opacity:.75;}
+.blk-free-id{opacity:.4;}
+
+/* BITMAP (MAPA DE BITS) */
+.bitmap-track{
+  width:100%;min-height:56px;max-height:210px;overflow-y:auto;border-radius:6px;
+  border:1px solid var(--border);background:var(--panel-2);padding:6px;
+  display:grid;gap:2px;grid-template-columns:repeat(var(--cols,20),1fr);align-content:start;
+}
+.bit-cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:3px;
+  font-family:var(--font-mono);font-size:9px;font-weight:700;border:1px solid var(--border);cursor:pointer;}
+.bit-free{color:var(--text-soft);background:var(--bg);}
+.bit-used{color:#fff;}
+
+/* TABLA FAT */
+.fat-table{width:100%;border-collapse:collapse;font-size:11px;}
+.fat-table th,.fat-table td{padding:5px 8px;border-bottom:1px solid var(--border);text-align:center;}
+.fat-table th{background:var(--panel-2);color:var(--text-soft);font-size:9px;text-transform:uppercase;letter-spacing:.5px;}
+.fat-table tbody tr:hover{background:var(--panel-2);}
+
+/* GAUGES CIRCULARES */
+.gauge-row{display:flex;gap:10px;}
+.gauge-box{
+  flex:1;background:var(--panel);border:1px solid var(--border);border-radius:var(--r-sm);
+  padding:8px 12px;display:flex;align-items:center;gap:10px;
+}
+.gauge-box svg{flex-shrink:0;}
+.gauge-label{font-size:9px;color:var(--text-soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700;}
+.gauge-num{font-size:17px;font-weight:700;font-family:var(--font-mono);}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <span class="brand-name">Gestión de Memoria &amp; Planificación de CPU</span>
+    <span class="brand-tag">7 métodos de asignación</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <span style="font-size:10px;color:var(--text-soft);">Simulación integrada de planificación de procesos y administración de memoria</span>
+  </div>
+  <div style="font-size:10px;color:var(--text-soft);font-family:var(--font-mono);">Sistemas Operativos · UNA Puno</div>
+</div>
+
+<div class="workspace">
+
+  <!-- ═══ SIDEBAR IZQUIERDO ═══ -->
+  <div class="sidebar">
+
+    <div class="section">
+      <div class="section-title">Algoritmo CPU</div>
+      <div class="policy-grid" id="fusionPolicyGrid">
+        <button class="policy-btn active" onclick="fusionSelectPolicy('FCFS',this)">FCFS</button>
+        <button class="policy-btn" onclick="fusionSelectPolicy('SJF',this)">SJF</button>
+        <button class="policy-btn" onclick="fusionSelectPolicy('SRT',this)">SRT</button>
+        <button class="policy-btn" onclick="fusionSelectPolicy('RR',this)">RR</button>
+        <button class="policy-btn" onclick="fusionSelectPolicy('PRIORITY',this)">PRIO</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Tipo de Asignación de Memoria</div>
+      <div class="alloc-grid" id="fusionAllocGrid">
+        <button class="alloc-btn active" id="fAllocContigua" onclick="fusionSelectAllocType('contigua',this)">Contigua</button>
+        <button class="alloc-btn" id="fAllocEnlazada" onclick="fusionSelectAllocType('enlazada',this)">Enlazada</button>
+        <button class="alloc-btn" id="fAllocIndexada" onclick="fusionSelectAllocType('indexada',this)">Indexada</button>
+        <button class="alloc-btn" id="fAllocMultinivel" onclick="fusionSelectAllocType('multinivel',this)">Indexada multinivel</button>
+        <button class="alloc-btn" id="fAllocFat" onclick="fusionSelectAllocType('fat',this)">FAT</button>
+        <button class="alloc-btn" id="fAllocExtension" onclick="fusionSelectAllocType('extension',this)">Por extensión</button>
+        <button class="alloc-btn" id="fAllocBitmap" onclick="fusionSelectAllocType('bitmap',this)">Mapa de bits</button>
+      </div>
+      <div class="info-mini" id="fAllocDesc" style="margin-top:6px;">Bloque único y contiguo por proceso. Usa el algoritmo de ajuste (First/Best/Worst Fit) o Buddy.</div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Algoritmo de Ajuste <span style="color:var(--text-soft);font-weight:400;text-transform:none;">(Contigua / Extensión)</span></div>
+      <div class="algo-grid" id="fAlgoGrid">
+        <button class="algo-btn active" id="fAlgoFirst" onclick="fusionSelectMemAlgo('first',this)">First Fit</button>
+        <button class="algo-btn" id="fAlgoBest" onclick="fusionSelectMemAlgo('best',this)">Best Fit</button>
+        <button class="algo-btn" id="fAlgoWorst" onclick="fusionSelectMemAlgo('worst',this)">Worst Fit</button>
+        <button class="algo-btn" id="fAlgoBuddy" onclick="fusionSelectMemAlgo('buddy',this)">Buddy</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Configuración de Memoria</div>
+      <label class="field-label">Capacidad RAM (KB)</label>
+      <input type="number" id="fMemTotal" value="2048" min="256" max="16384" step="256">
+      <label class="field-label" style="margin-top:6px;">Memoria por proceso (KB)</label>
+      <div class="field-row">
+        <div>
+          <span class="field-label">Mín</span>
+          <input type="number" id="fMemMin" value="64" min="16" max="512">
+        </div>
+        <div>
+          <span class="field-label">Máx</span>
+          <input type="number" id="fMemMax" value="256" min="32" max="1024">
+        </div>
+      </div>
+      <label class="field-label" style="margin-top:6px;">Tamaño de bloque (KB) <span style="color:var(--text-soft);font-weight:400;">— métodos por bloques fijos</span></label>
+      <input type="number" id="fBlockSize" value="64" min="8" max="512" step="8">
+      <div class="info-mini" style="margin-top:6px;">Índice de 2º nivel (Multinivel): 3 punteros a bloques de datos por cada bloque índice secundario.</div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Generación Masiva</div>
+      <div class="gen-section">
+        <label class="field-label">Cantidad de Procesos</label>
+        <input type="number" id="fProcCount" value="20" min="1" max="200">
+        <label class="field-label" style="margin-top:6px;">Ráfaga CPU (ut)</label>
+        <div class="field-row">
+          <div><span class="field-label">Mín</span><input type="number" id="fBurstMin" value="2" min="1"></div>
+          <div><span class="field-label">Máx</span><input type="number" id="fBurstMax" value="10" min="1"></div>
+        </div>
+        <label class="field-label" style="margin-top:6px;">Llegada máx. (ut)</label>
+        <input type="number" id="fArrivalMax" value="30" min="0">
+        <button class="btn primary" id="fGenerateBtn" style="width:100%;margin-top:8px;" onclick="fusionGenerate()">Generar procesos</button>
+      </div>
+    </div>
+
+    <div class="section" style="flex:1;display:flex;flex-direction:column;">
+      <div class="section-title">Cola de Procesos (<span id="fProcCount2">0</span>)</div>
+      <div class="proc-list" id="fProcList">
+        <div style="text-align:center;color:var(--text-soft);font-size:11px;padding:10px;">Sin procesos. Genera o agrega manualmente.</div>
+      </div>
+      <button class="btn danger" id="fClearBtn" style="width:100%;margin-top:6px;" onclick="fusionClear()">Limpiar todo</button>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Agregar Manual</div>
+      <input type="text" id="fPName" value="P0" placeholder="Nombre" style="margin-bottom:4px;">
+      <div class="field-row">
+        <div><span class="field-label">Llegada</span><input type="number" id="fArrival" value="0"></div>
+        <div><span class="field-label">Ráfaga CPU</span><input type="number" id="fBurst" value="4"></div>
+      </div>
+      <div class="field-row" style="margin-top:4px;">
+        <div><span class="field-label">Prioridad</span><input type="number" id="fPriority" value="1"></div>
+        <div><span class="field-label">Mem (KB)</span><input type="number" id="fMemSize" value="128"></div>
+      </div>
+      <button class="btn teal" id="fAddManualBtn" style="width:100%;margin-top:6px;" onclick="fusionAddManual()">+ Agregar</button>
+      <div id="fMsgProc" class="msg"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Control de Simulación</div>
+      <div class="btn-row">
+        <button class="btn primary" id="fStartBtn" onclick="fusionStart()">Iniciar</button>
+        <button class="btn" id="fPauseBtn" disabled onclick="fusionPause()">Pausar</button>
+      </div>
+      <button class="btn danger" style="width:100%;margin-top:4px;" onclick="fusionReset()">Reiniciar</button>
+      <div style="margin-top:8px;">
+        <label class="field-label">Velocidad: <span id="fSpeedVal">1x</span></label>
+        <input type="range" min="0.5" max="10" step="0.5" value="1" onchange="fusionSetSpeed(this.value)">
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══ CONTENIDO CENTRAL ═══ -->
+  <div class="main">
+
+    <!-- STATUS ROW -->
+    <div style="display:flex;gap:10px;">
+      <div class="status-box" style="flex:1;">
+        <span style="font-size:10px;color:var(--text-soft);">CPU TICK</span>
+        <span class="chip" style="background:var(--blue-lt);color:var(--blue);" id="fClock">0 ut</span>
+      </div>
+      <div class="status-box" style="flex:1;">
+        <span style="font-size:10px;color:var(--text-soft);">EJECUTANDO</span>
+        <span class="chip" id="fRunning" style="background:var(--panel);color:var(--text-mid);">—</span>
+      </div>
+      <div class="status-box" style="flex:1;">
+        <span style="font-size:10px;color:var(--text-soft);">ESTADO</span>
+        <span id="fStatus" style="font-size:11px;font-weight:700;color:var(--amber);">Listo</span>
+      </div>
+      <div class="status-box" style="flex:1;">
+        <span style="font-size:10px;color:var(--text-soft);">PROGRESO</span>
+        <span id="fProgress" style="font-size:11px;font-weight:700;font-family:var(--font-mono);color:var(--green);">0/0</span>
+      </div>
+    </div>
+
+    <!-- GAUGES CIRCULARES -->
+    <div class="gauge-row">
+      <div class="gauge-box">
+        <svg width="52" height="52" viewBox="0 0 54 54">
+          <circle cx="27" cy="27" r="23" fill="none" stroke="var(--border)" stroke-width="6"/>
+          <circle id="fGaugeProcRing" cx="27" cy="27" r="23" fill="none" stroke="var(--purple)" stroke-width="6"
+                  stroke-linecap="round" stroke-dasharray="144.51" stroke-dashoffset="144.51"
+                  transform="rotate(-90 27 27)" style="transition:stroke-dashoffset .4s ease;"/>
+        </svg>
+        <div>
+          <div class="gauge-label">Progreso Simulación</div>
+          <div class="gauge-num" id="fGaugeProcNum" style="color:var(--purple);">0%</div>
+        </div>
+      </div>
+      <div class="gauge-box">
+        <svg width="52" height="52" viewBox="0 0 54 54">
+          <circle cx="27" cy="27" r="23" fill="none" stroke="var(--border)" stroke-width="6"/>
+          <circle id="fGaugeRamRing" cx="27" cy="27" r="23" fill="none" stroke="var(--teal)" stroke-width="6"
+                  stroke-linecap="round" stroke-dasharray="144.51" stroke-dashoffset="144.51"
+                  transform="rotate(-90 27 27)" style="transition:stroke-dashoffset .4s ease;"/>
+        </svg>
+        <div>
+          <div class="gauge-label">RAM Utilizada</div>
+          <div class="gauge-num" id="fGaugeRamNum" style="color:var(--teal);">0%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROGRESS BAR -->
+    <div class="viz-card">
+      <div class="viz-header">
+        <span>Secuencia de ejecución de CPU</span>
+        <span class="viz-badge" id="fTimelineLabel">—</span>
+      </div>
+      <div class="barcode-wrap" id="fBarcodeWrap">
+        <div class="barcode-track" id="fBarcodeTrack">
+          <div style="display:flex;align-items:center;justify-content:center;width:100%;color:var(--text-soft);font-size:11px;">Inicia la simulación para ver la secuencia de ejecución</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MEMORY MAP -->
+    <div class="viz-card">
+      <div class="viz-header teal-h">
+        <span>Mapa de memoria RAM — <span id="fMemTotalLabel">2048</span> KB</span>
+        <span class="viz-badge" id="fMemStatus">Sin init.</span>
+      </div>
+      <div style="padding:12px 14px;">
+        <div class="mem-track" id="fMemTrack">
+          <div style="display:flex;align-items:center;justify-content:center;width:100%;color:var(--text-soft);font-size:11px;">Memoria sin inicializar</div>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:12px;font-size:10px;">
+          <span style="color:var(--text-soft);">
+            <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:repeating-linear-gradient(45deg,var(--bg),var(--bg) 3px,var(--panel) 3px,var(--panel) 6px);margin-right:4px;vertical-align:middle;"></span>Libre
+          </span>
+          <span id="fMemLegend" style="display:flex;gap:8px;flex-wrap:wrap;"></span>
+        </div>
+        <div class="mem-hint" id="fMemHint"></div>
+      </div>
+    </div>
+
+    <!-- TABLA FAT (solo visible en modo FAT) -->
+    <div class="viz-card" id="fFatCard" style="display:none;">
+      <div class="viz-header fat-h">
+        <span>Tabla de Asignación de Archivos (FAT)</span>
+        <span class="viz-badge" id="fFatBadge">0 entradas</span>
+      </div>
+      <div style="padding:8px 14px 12px;max-height:170px;overflow:auto;">
+        <table class="fat-table" id="fFatTable">
+          <thead><tr><th>Bloque</th><th>Proceso</th><th>Puntero siguiente</th></tr></thead>
+          <tbody id="fFatBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PROCESS STATE TABLE -->
+    <div class="viz-card grow">
+      <div class="viz-header purple-h">
+        <span>Estado integrado de procesos (CPU + RAM)</span>
+        <span class="viz-badge" id="fTableBadge">0 procesos</span>
+      </div>
+      <div style="overflow:auto;flex:1;min-height:0;">
+        <table class="ptable" id="fStateTable">
+          <thead>
+            <tr>
+              <th>Proceso</th>
+              <th>Llegada</th>
+              <th>Ráfaga</th>
+              <th>Prio</th>
+              <th>Mem (KB)</th>
+              <th>Estado CPU</th>
+              <th>Estado RAM</th>
+              <th>Inicio CPU</th>
+              <th>Fin CPU</th>
+              <th>Espera</th>
+            </tr>
+          </thead>
+          <tbody id="fTableBody">
+            <tr><td colspan="10" style="text-align:center;color:var(--text-soft);padding:20px;">Sin datos. Genera procesos y ejecuta la simulación.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══ SIDEBAR DERECHO ═══ -->
+  <div class="sidebar-right">
+
+    <!-- MÉTRICAS CPU -->
+    <div class="section">
+      <div class="section-title">Métricas CPU</div>
+      <div class="metrics-grid">
+        <div class="metric-box">
+          <div class="m-label">Tiempo Total</div>
+          <div class="m-value" id="fm-total">—</div>
+          <div class="m-unit">ut</div>
+        </div>
+        <div class="metric-box green-b">
+          <div class="m-label">Utilización</div>
+          <div class="m-value green" id="fm-util">—</div>
+          <div class="m-unit">%</div>
+        </div>
+        <div class="metric-box teal-b">
+          <div class="m-label">Espera Prom.</div>
+          <div class="m-value teal sm" id="fm-wait">—</div>
+          <div class="m-unit">ut</div>
+        </div>
+        <div class="metric-box amber-b">
+          <div class="m-label">Retorno Prom.</div>
+          <div class="m-value amber sm" id="fm-return">—</div>
+          <div class="m-unit">ut</div>
+        </div>
+        <div class="metric-box">
+          <div class="m-label">Ctx Switches</div>
+          <div class="m-value sm" id="fm-ctx">—</div>
+        </div>
+        <div class="metric-box purple-b">
+          <div class="m-label">Terminados</div>
+          <div class="m-value sm" style="color:var(--purple);" id="fm-done">0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MÉTRICAS RAM -->
+    <div class="section">
+      <div class="section-title">Métricas RAM</div>
+      <div class="metrics-grid">
+        <div class="metric-box teal-b">
+          <div class="m-label">Usado</div>
+          <div class="m-value teal sm" id="fm-used">—</div>
+          <div class="m-unit">KB</div>
+        </div>
+        <div class="metric-box green-b">
+          <div class="m-label">Libre</div>
+          <div class="m-value green sm" id="fm-free">—</div>
+          <div class="m-unit">KB</div>
+        </div>
+      </div>
+      <div class="util-row">
+        <span class="util-lbl">RAM</span>
+        <div class="util-track"><div class="util-fill" id="fm-fill-ram" style="background:var(--teal);"></div></div>
+        <span class="util-pct" id="fm-pct-ram">0%</span>
+      </div>
+    </div>
+
+    <!-- PIPELINE STAGES -->
+    <div class="section">
+      <div class="section-title">Colas por Estado</div>
+      <div class="pipeline">
+        <div class="stage" style="border-color:var(--blue);">
+          <div style="color:var(--blue);font-size:9px;">LISTO</div>
+          <div class="stage-val" style="color:var(--blue);" id="fq-ready">0</div>
+        </div>
+        <div class="stage" style="border-color:var(--teal);">
+          <div style="color:var(--teal);font-size:9px;">EN RAM</div>
+          <div class="stage-val" style="color:var(--teal);" id="fq-ram">0</div>
+        </div>
+        <div class="stage" style="border-color:var(--green);">
+          <div style="color:var(--green);font-size:9px;">EXEC</div>
+          <div class="stage-val" style="color:var(--green);" id="fq-exec">0</div>
+        </div>
+        <div class="stage" style="border-color:var(--amber);">
+          <div style="color:var(--amber);font-size:9px;">TÉRMINO</div>
+          <div class="stage-val" style="color:var(--amber);" id="fq-done">0</div>
+        </div>
+      </div>
+      <div style="margin-top:8px;">
+        <div class="section-title" style="margin-bottom:4px;">Pendientes de Llegar</div>
+        <div class="queue-badges" id="fq-pending"></div>
+      </div>
+    </div>
+
+    <!-- RESIDENTES EN RAM -->
+    <div class="section">
+      <div class="section-title">Residentes Activos en RAM</div>
+      <div id="fResidentList" style="max-height:130px;overflow-y:auto;">
+        <div style="text-align:center;color:var(--text-soft);font-size:10px;padding:10px;">RAM vacía</div>
+      </div>
+    </div>
+
+    <!-- FRAGMENTOS LIBRES -->
+    <div class="section">
+      <div class="section-title">Fragmentos Libres (<span id="fFreeCount">0</span>)</div>
+      <div id="fFreeList" style="max-height:80px;overflow-y:auto;font-family:var(--font-mono);font-size:10px;color:var(--text-mid);"></div>
+    </div>
+
+    <!-- EVENT LOG -->
+    <div class="section" style="flex:1;display:flex;flex-direction:column;min-height:180px;">
+      <div class="section-title">Registro de Eventos</div>
+      <div class="event-log" id="fEventLog">
+        <div class="ev idle">Sistema listo. Configura y ejecuta la simulación fusionada.</div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   SIMULADOR FUSIÓN CPU + MEMORIA (DIPATCHER DINÁMICO)
+   ═══════════════════════════════════════════════════════ */
+
+const COLORS = [
+  '#4a7cf7','#22c9b7','#f05252','#a78bfa',
+  '#3ecf8e','#f5a623','#e879f9','#60a5fa',
+  '#34d399','#fbbf24','#f87171','#818cf8',
+  '#2dd4bf','#c084fc','#fb923c','#4ade80',
+  '#38bdf8','#e879f9','#a3e635','#f472b6'
+];
+
+const F_SECOND_LEVEL_CAP = 3;  // punteros a bloques de datos por cada bloque índice de 2º nivel (Multinivel)
+
+let fPolicy   = 'FCFS';
+let fMemAlgo  = 'first';
+let fAllocType= 'contigua';   // 'contigua' | 'enlazada' | 'indexada' | 'multinivel' | 'fat' | 'extension' | 'bitmap'
+let fBlockSize= 64;           // KB por bloque (métodos de bloques fijos)
+let fProcs   = [];        // Proceso completo
+let fDynamicTimeline= []; // Secuencia dinámica de ejecución [{name,start,end}]
+let fMemBlocks = [];      // [{id,start,size,type,process,isIndex,nextBlockId}]
+let fMemTotal  = 2048;
+let fColorMap  = {};
+let fSimTimer  = null;
+let fSimStep   = 0;
+let fSimRunning= false;
+let fSimPaused = false;
+let fSpeed     = 1;
+let fDoneCount = 0;
+
+// Variables de estado del planificador dinámico
+let rrQueue = [];
+let rrQuantumSpent = 0;
+let currentRunningProc = null;
+let contextSwitchesCount = 0;
+
+/* ── POLICY ── */
+function fusionSelectPolicy(p, btn) {
+  if (fSimRunning) return;
+  fPolicy = p;
+  document.querySelectorAll('#fusionPolicyGrid .policy-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+/* ── MEM ALGO ── */
+function fusionSelectMemAlgo(a, btn) {
+  if (fSimRunning) return;
+  fMemAlgo = a;
+  document.querySelectorAll('.algo-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+/* ── TIPO DE ASIGNACIÓN DE MEMORIA (7 métodos) ── */
+const F_ALLOC_DESC = {
+  contigua  : 'Bloque único y contiguo por proceso. Usa el algoritmo de ajuste (First/Best/Worst Fit) o Buddy.',
+  enlazada  : 'El proceso se divide en bloques de tamaño fijo, dispersos por la RAM y enlazados mediante punteros almacenados dentro de cada bloque — como una lista enlazada. No requiere espacio contiguo.',
+  indexada  : 'El proceso se divide en bloques de datos dispersos + 1 bloque índice adicional que guarda las direcciones de todos sus bloques (tabla de índices de un solo nivel).',
+  multinivel: 'Un bloque índice maestro apunta a varios bloques índice de segundo nivel, y cada uno de éstos apunta a hasta '+F_SECOND_LEVEL_CAP+' bloques de datos. Permite indexar archivos grandes sin un único índice enorme.',
+  fat       : 'Los bloques de datos se encadenan igual que en la asignación enlazada, pero los punteros "siguiente bloque" no se guardan dentro de cada bloque: viven en una tabla central (la FAT) que el SO recorre para reconstruir la cadena de cualquier proceso.',
+  extension : 'A cada proceso se le reservan una o varias extensiones (rachas contiguas de tamaño variable). El sistema intenta primero un único tramo contiguo con el algoritmo de ajuste elegido; si no existe, reparte el proceso en el menor número posible de fragmentos grandes.',
+  bitmap    : 'El espacio se divide en bloques fijos y su estado se representa con un vector de bits (1 bloque = 1 bit: 0 = libre, 1 = ocupado). Para asignar, se recorre el mapa buscando la primera racha contigua de bits en 0 con longitud suficiente.'
+};
+const F_ALLOC_HINT = {
+  contigua  : '',
+  enlazada  : 'Las líneas punteadas muestran el puntero "siguiente bloque" de cada archivo.',
+  indexada  : 'Los bloques con borde blanco discontinuo (IDX) son el índice de cada proceso.',
+  multinivel: 'Borde sólido = índice maestro (M) · borde discontinuo = índice de 2º nivel (S) · sin etiqueta = bloque de datos.',
+  fat       : 'Los bloques no muestran punteros: consulta la tabla FAT de abajo para ver la cadena de cada proceso.',
+  extension : 'Un mismo proceso puede ocupar más de un tramo; el número tras el nombre indica el índice de la extensión.',
+  bitmap    : 'Cada celda es 1 bit del vector de bits — 0 = libre, 1 = ocupado.'
+};
+function fusionSelectAllocType(t, btn) {
+  if (fSimRunning) return; // evita corromper la RAM cambiando el modelo en pleno vuelo
+  fAllocType = t;
+  document.querySelectorAll('.alloc-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  const algoApplies = (t === 'contigua' || t === 'extension');
+  document.getElementById('fAlgoGrid').classList.toggle('disabled', !algoApplies);
+  document.getElementById('fAlgoBuddy').disabled = (t === 'extension');
+  if (t === 'extension' && fMemAlgo === 'buddy') {
+    fMemAlgo = 'first';
+    document.querySelectorAll('#fAlgoGrid .algo-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('fAlgoFirst').classList.add('active');
+  }
+
+  document.getElementById('fAllocDesc').textContent = F_ALLOC_DESC[t];
+  document.getElementById('fMemHint').textContent = F_ALLOC_HINT[t];
+  fusionInitMemory();
+  renderFatPanel();
+}
+
+/* ── GENERATE ── */
+function fusionGenerate() {
+  if (fSimRunning) return;
+  fusionClear();
+  const n        = parseInt(document.getElementById('fProcCount').value) || 20;
+  const bMin     = parseInt(document.getElementById('fBurstMin').value)  || 2;
+  const bMax     = parseInt(document.getElementById('fBurstMax').value)  || 10;
+  const aMax     = parseInt(document.getElementById('fArrivalMax').value)|| 30;
+  const memMin   = parseInt(document.getElementById('fMemMin').value)    || 64;
+  const memMax   = parseInt(document.getElementById('fMemMax').value)    || 256;
+
+  for (let i = 0; i < n; i++) {
+    const name    = `P${i}`;
+    const arrival = Math.floor(Math.random() * (aMax + 1));
+    const burst   = bMin + Math.floor(Math.random() * (bMax - bMin + 1));
+    const priority= Math.floor(Math.random() * 4) + 1;
+    const memSize = memMin + Math.floor(Math.random() * (memMax - memMin + 1));
+    const color   = COLORS[i % COLORS.length];
+    fProcs.push({ name, arrival, burst, priority, memSize, color,
+                  remaining: burst, state: 'pending',
+                  memStart: null, startTime: null, endTime: null, waitTime: null });
+    fColorMap[name] = color;
+  }
+  renderFProcList();
+  fShowMsg('fMsgProc', `${n} procesos generados`, 'ok');
+}
+
+/* ── ADD MANUAL ── */
+function fusionAddManual() {
+  if (fSimRunning) return;
+  const name    = document.getElementById('fPName').value.trim() || `P${fProcs.length}`;
+  const arrival = parseInt(document.getElementById('fArrival').value)   || 0;
+  const burst   = parseInt(document.getElementById('fBurst').value)     || 4;
+  const priority= parseInt(document.getElementById('fPriority').value)  || 1;
+  const memSize = parseInt(document.getElementById('fMemSize').value)   || 128;
+  if (fProcs.find(p => p.name === name)) return fShowMsg('fMsgProc','Nombre duplicado','err');
+  const color = COLORS[fProcs.length % COLORS.length];
+  fProcs.push({ name, arrival, burst, priority, memSize, color,
+                remaining: burst, state: 'pending',
+                memStart: null, startTime: null, endTime: null, waitTime: null });
+  fColorMap[name] = color;
+  document.getElementById('fPName').value = `P${fProcs.length}`;
+  renderFProcList();
+  fShowMsg('fMsgProc', `${name} agregado`, 'ok');
+}
+
+/* ── RENDER PROC LIST ── */
+function renderFProcList() {
+  const el = document.getElementById('fProcList');
+  document.getElementById('fProcCount2').textContent = fProcs.length;
+  document.getElementById('fTableBadge').textContent = fProcs.length + ' procesos';
+  if (!fProcs.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--text-soft);font-size:11px;padding:10px;">Sin procesos.</div>';
+    return;
+  }
+  el.innerHTML = fProcs.map((p, i) => `
+    <div class="proc-item" style="border-left:3px solid ${p.color};">
+      <div>
+        <span style="font-weight:800;color:${p.color};font-size:12px;">${p.name}</span>
+        <span style="font-size:9px;color:var(--text-soft);display:block;font-family:var(--font-mono);">
+          arr:${p.arrival} cpu:${p.burst}ut mem:${p.memSize}KB
+        </span>
+      </div>
+      <button class="btn-xs" onclick="fusionRemoveProc(${i})">✕</button>
+    </div>`).join('');
+}
+
+function fusionRemoveProc(i) {
+  if (fSimRunning) return;
+  fProcs.splice(i,1); renderFProcList();
+}
+
+function fusionClear() {
+  if (fSimRunning) return;
+  fusionReset();
+  fProcs = [];
+  fColorMap = {};
+  renderFProcList();
+  renderFStateTable();
+}
+
+/* ── BLOQUEO DE CONFIGURACIÓN MIENTRAS CORRE LA SIMULACIÓN ──
+   Evita que el usuario cambie el tipo de asignación, el algoritmo,
+   la capacidad de RAM o la lista de procesos a mitad de una corrida,
+   lo cual dejaba bloques "huérfanos" y procesos desincronizados. */
+function fSetConfigLocked(locked) {
+  const ids = ['fMemTotal','fBlockSize','fMemMin','fMemMax','fProcCount','fBurstMin','fBurstMax',
+               'fArrivalMax','fPName','fArrival','fBurst','fPriority','fMemSize',
+               'fGenerateBtn','fAddManualBtn','fClearBtn'];
+  ids.forEach(id => { const el = document.getElementById(id); if (el) el.disabled = locked; });
+  document.querySelectorAll('.alloc-btn, .algo-btn, .policy-btn').forEach(b => b.disabled = locked);
+}
+
+/* ── FACTIBILIDAD DE ASIGNACIÓN ──
+   Un proceso cuyo tamaño nunca podrá satisfacerse (incluso con toda
+   la RAM libre) se marcaba antes como "pending" para siempre y la
+   simulación jamás llegaba al 100%. Ahora se detecta de antemano. */
+function fIsRequestFeasible(proc) {
+  if (fAllocType === 'contigua' || fAllocType === 'extension') {
+    return proc.memSize <= fMemTotal;
+  }
+  let maxBlocks = Math.max(1, Math.floor(fMemTotal / fBlockSize));
+  let dataBlocksNeeded = Math.ceil(proc.memSize / fBlockSize);
+  if (fAllocType === 'enlazada') return dataBlocksNeeded <= maxBlocks;
+  if (fAllocType === 'indexada') return (dataBlocksNeeded + 1) <= maxBlocks;
+  if (fAllocType === 'fat')      return dataBlocksNeeded <= maxBlocks; // la FAT en sí se modela como metadato aparte
+  if (fAllocType === 'bitmap')   return dataBlocksNeeded <= maxBlocks;
+  if (fAllocType === 'multinivel') {
+    let secondNeeded = Math.max(1, Math.ceil(dataBlocksNeeded / F_SECOND_LEVEL_CAP));
+    return (dataBlocksNeeded + secondNeeded + 1) <= maxBlocks; // +1 índice maestro
+  }
+  return true;
+}
+
+/* ── INIT MEMORY ── */
+const F_ALLOC_LABEL = {
+  contigua:'Contigua', enlazada:'Enlazada', indexada:'Indexada',
+  multinivel:'Indexada multinivel', fat:'FAT', extension:'Por extensión', bitmap:'Mapa de bits'
+};
+function fusionInitMemory() {
+  fMemTotal  = parseInt(document.getElementById('fMemTotal').value) || 2048;
+  fBlockSize = Math.max(8, parseInt(document.getElementById('fBlockSize').value) || 64);
+  document.getElementById('fMemTotalLabel').textContent = fMemTotal;
+  document.getElementById('fMemStatus').textContent = 'Inicializada · ' + F_ALLOC_LABEL[fAllocType];
+
+  if (fAllocType === 'contigua' || fAllocType === 'extension') {
+    fMemBlocks = [{ id:1, start:0, size:fMemTotal, type:'free', process:null }];
+  } else {
+    // memoria dividida en bloques fijos fBlockSize (enlazada / indexada / multinivel / fat / bitmap)
+    let n = Math.max(1, Math.floor(fMemTotal / fBlockSize));
+    fMemBlocks = [];
+    for (let i = 0; i < n; i++) {
+      fMemBlocks.push({
+        id:i+1, start:i*fBlockSize, size:fBlockSize, type:'free', process:null,
+        role:null, nextBlockId:null, parentId:null, childIds:[]
+      });
+    }
+  }
+  renderFMemMap();
+  updateFMemStats();
+}
+
+/* ── ALLOCATION ENGINES ── */
+function fTryAllocate(proc) {
+
+  /* 1) CONTIGUA — un único bloque, con First/Best/Worst Fit o Buddy */
+  if (fAllocType === 'contigua') {
+    let target = fPickContiguousTarget(proc.memSize, fMemAlgo, true);
+    if (!target) return false;
+    let idx = fMemBlocks.indexOf(target);
+    if (fMemAlgo !== 'buddy' && target.size > proc.memSize) {
+      let newFree = {id:Date.now(), start:target.start+proc.memSize, size:target.size-proc.memSize, type:'free', process:null};
+      fMemBlocks.splice(idx+1, 0, newFree);
+      target.size = proc.memSize;
+    }
+    target.type = 'allocated';
+    target.process = proc.name;
+    return true;
+
+  /* 2) POR EXTENSIÓN — intenta un solo tramo contiguo (según algoritmo elegido);
+        si no cabe entero, reparte en el menor número de fragmentos grandes */
+  } else if (fAllocType === 'extension') {
+    let single = fPickContiguousTarget(proc.memSize, fMemAlgo === 'buddy' ? 'first' : fMemAlgo, false);
+    if (single) {
+      let idx = fMemBlocks.indexOf(single);
+      if (single.size > proc.memSize) {
+        let newFree = {id:Date.now()+Math.random(), start:single.start+proc.memSize, size:single.size-proc.memSize, type:'free', process:null};
+        fMemBlocks.splice(idx+1, 0, newFree);
+        single.size = proc.memSize;
+      }
+      single.type = 'allocated'; single.process = proc.name; single.extentIndex = 1;
+      return true;
+    }
+    let totalFree = fMemBlocks.filter(b=>b.type==='free').reduce((a,b)=>a+b.size,0);
+    if (totalFree < proc.memSize) return false;
+    let remaining = proc.memSize, n = 0;
+    while (remaining > 0) {
+      let cands = fMemBlocks.filter(b => b.type==='free' && b.size>0);
+      cands.sort((a,b)=>b.size-a.size);
+      let target = cands[0];
+      let idx = fMemBlocks.indexOf(target);
+      let take = Math.min(target.size, remaining);
+      if (take < target.size) {
+        let newFree = {id:Date.now()+Math.random()+n, start:target.start+take, size:target.size-take, type:'free', process:null};
+        fMemBlocks.splice(idx+1, 0, newFree);
+        target.size = take;
+      }
+      n++;
+      target.type = 'allocated'; target.process = proc.name; target.extentIndex = n;
+      remaining -= take;
+    }
+    return true;
+
+  /* 3) ENLAZADA / FAT — misma cadena de bloques dispersos; sólo cambia
+        dónde se "ve" el puntero (embebido en el bloque, o en tabla aparte) */
+  } else if (fAllocType === 'enlazada' || fAllocType === 'fat') {
+    let blocksNeeded = Math.ceil(proc.memSize / fBlockSize);
+    let freeBlocks = fMemBlocks.filter(b => b.type === 'free');
+    if (freeBlocks.length < blocksNeeded) return false;
+    let allocated = freeBlocks.slice(0, blocksNeeded);
+    for (let i = 0; i < blocksNeeded; i++) {
+      let b = allocated[i];
+      b.type = 'allocated'; b.process = proc.name; b.role = 'data';
+      b.nextBlockId = (i < blocksNeeded - 1) ? allocated[i+1].id : null;
+    }
+    return true;
+
+  /* 4) INDEXADA — 1 bloque índice de un solo nivel + bloques de datos */
+  } else if (fAllocType === 'indexada') {
+    let dataBlocksNeeded = Math.ceil(proc.memSize / fBlockSize);
+    let totalNeeded = dataBlocksNeeded + 1;
+    let freeBlocks = fMemBlocks.filter(b => b.type === 'free');
+    if (freeBlocks.length < totalNeeded) return false;
+
+    let indexBlock = freeBlocks[0];
+    indexBlock.type = 'allocated'; indexBlock.process = proc.name; indexBlock.role = 'index';
+
+    let dataBlocks = freeBlocks.slice(1, totalNeeded);
+    dataBlocks.forEach(b => { b.type='allocated'; b.process=proc.name; b.role='data'; b.parentId=indexBlock.id; });
+    indexBlock.childIds = dataBlocks.map(b=>b.id);
+    return true;
+
+  /* 5) INDEXADA MULTINIVEL — 1 índice maestro → N índices de 2º nivel → datos */
+  } else if (fAllocType === 'multinivel') {
+    let dataBlocksNeeded = Math.ceil(proc.memSize / fBlockSize);
+    let secondNeeded = Math.max(1, Math.ceil(dataBlocksNeeded / F_SECOND_LEVEL_CAP));
+    let totalNeeded = dataBlocksNeeded + secondNeeded + 1;
+    let freeBlocks = fMemBlocks.filter(b => b.type === 'free');
+    if (freeBlocks.length < totalNeeded) return false;
+
+    let master = freeBlocks[0];
+    master.type = 'allocated'; master.process = proc.name; master.role = 'master'; master.childIds = [];
+
+    let cursor = 1, dataRemaining = dataBlocksNeeded;
+    for (let s = 0; s < secondNeeded; s++) {
+      let secondBlk = freeBlocks[cursor++];
+      secondBlk.type = 'allocated'; secondBlk.process = proc.name; secondBlk.role = 'second';
+      secondBlk.parentId = master.id; secondBlk.childIds = [];
+      master.childIds.push(secondBlk.id);
+      let take = Math.min(F_SECOND_LEVEL_CAP, dataRemaining);
+      for (let d = 0; d < take; d++) {
+        let dataBlk = freeBlocks[cursor++];
+        dataBlk.type = 'allocated'; dataBlk.process = proc.name; dataBlk.role = 'data'; dataBlk.parentId = secondBlk.id;
+        secondBlk.childIds.push(dataBlk.id);
+      }
+      dataRemaining -= take;
+    }
+    return true;
+
+  /* 6) MAPA DE BITS — racha contigua de bloques libres localizada explorando
+        el vector de bits (first-fit sobre bits en 0) */
+  } else if (fAllocType === 'bitmap') {
+    let dataBlocksNeeded = Math.ceil(proc.memSize / fBlockSize);
+    let n = fMemBlocks.length, start = -1;
+    for (let i = 0; i <= n - dataBlocksNeeded; i++) {
+      let ok = true;
+      for (let k = 0; k < dataBlocksNeeded; k++) {
+        if (fMemBlocks[i+k].type !== 'free') { ok = false; break; }
+      }
+      if (ok) { start = i; break; }
+    }
+    if (start === -1) return false;
+    for (let k = start; k < start + dataBlocksNeeded; k++) {
+      fMemBlocks[k].type = 'allocated'; fMemBlocks[k].process = proc.name; fMemBlocks[k].role = 'data';
+    }
+    return true;
+  }
+  return false;
+}
+
+/* Búsqueda de un hueco contiguo único (usada por Contigua y por el
+   primer intento de Por Extensión). allowBuddy habilita el algoritmo Buddy. */
+function fPickContiguousTarget(size, algo, allowBuddy) {
+  let target = null;
+  if (algo === 'first') {
+    target = fMemBlocks.find(b => b.type==='free' && b.size>=size);
+  } else if (algo === 'best') {
+    let cands = fMemBlocks.filter(b => b.type==='free' && b.size>=size);
+    cands.sort((a,b)=>a.size-b.size);
+    target = cands[0];
+  } else if (algo === 'worst') {
+    let cands = fMemBlocks.filter(b => b.type==='free' && b.size>=size);
+    cands.sort((a,b)=>b.size-a.size);
+    target = cands[0];
+  } else if (algo === 'buddy' && allowBuddy) {
+    let needed = Math.pow(2, Math.ceil(Math.log2(size)));
+    needed = Math.max(32, needed);
+    target = fMemBlocks.find(b => b.type==='free' && b.size>=needed);
+    if (target) {
+      while (target.size > needed) {
+        let idx = fMemBlocks.indexOf(target);
+        let half = target.size/2;
+        target.size = half;
+        let buddy = { id:Date.now()+idx, start:target.start+half, size:half, type:'free', process:null };
+        fMemBlocks.splice(idx+1, 0, buddy);
+      }
+    }
+  }
+  return target || null;
+}
+
+function fDeallocate(procName) {
+  if (fAllocType === 'contigua') {
+    let blk = fMemBlocks.find(b => b.process === procName);
+    if (!blk) return;
+    blk.type = 'free';
+    blk.process = null;
+    if (fMemAlgo === 'buddy') {
+      fCoalesceBuddy();
+    } else {
+      fCoalesce();
+    }
+  } else if (fAllocType === 'extension') {
+    fMemBlocks.forEach(b => {
+      if (b.process === procName) { b.type='free'; b.process=null; b.extentIndex=null; }
+    });
+    fCoalesce();
+  } else {
+    // enlazada, indexada, multinivel, fat, bitmap: liberar todos los bloques fijos asociados
+    fMemBlocks.forEach(b => {
+      if (b.process === procName) {
+        b.type = 'free'; b.process = null; b.role = null;
+        b.nextBlockId = null; b.parentId = null; b.childIds = [];
+      }
+    });
+  }
+}
+
+function fCoalesce() {
+  for(let i=0;i<fMemBlocks.length-1;i++){
+    if(fMemBlocks[i].type==='free'&&fMemBlocks[i+1].type==='free'){
+      fMemBlocks[i].size+=fMemBlocks[i+1].size;
+      fMemBlocks.splice(i+1,1); i--;
+    }
+  }
+}
+
+function fCoalesceBuddy() {
+  let coalesced = true;
+  while (coalesced) {
+    coalesced = false;
+    for (let i = 0; i < fMemBlocks.length - 1; i++) {
+      let b1 = fMemBlocks[i];
+      let b2 = fMemBlocks[i + 1];
+      if (b1.type === 'free' && b2.type === 'free' && b1.size === b2.size) {
+        let buddySize = b1.size * 2;
+        if (b1.start % buddySize === 0 && b2.start === b1.start + b1.size) {
+          b1.size = buddySize;
+          fMemBlocks.splice(i + 1, 1);
+          coalesced = true;
+          break;
+        }
+      }
+    }
+  }
+}
+
+/* ── RENDER MEMORY MAP ── */
+function renderFMemMap() {
+  const track = document.getElementById('fMemTrack');
+  if(!fMemBlocks.length){ track.innerHTML=''; return; }
+
+  if (fAllocType === 'contigua' || fAllocType === 'extension') {
+    track.className = 'mem-track';
+    track.style.display = 'flex';
+    track.innerHTML = fMemBlocks.map(b => {
+      let pct = (b.size/fMemTotal*100).toFixed(2);
+      let bg  = b.type==='free'
+        ? 'repeating-linear-gradient(45deg,var(--bg),var(--bg) 3px,var(--panel) 3px,var(--panel) 6px)'
+        : fColorMap[b.process] || '#4a7cf7';
+      let clr = b.type==='free' ? 'var(--text-soft)' : '#fff';
+      let extLabel = (fAllocType==='extension' && b.extentIndex) ? (b.process+' #'+b.extentIndex) : b.process;
+      let title = b.type==='free' ? 'Libre' : (b.process+' ('+b.size+'KB)'+(b.extentIndex?' — extensión '+b.extentIndex:''));
+      return `<div class="mem-seg" style="width:${pct}%;background:${bg};color:${clr};" title="${title}">
+        ${parseFloat(pct)>6 ? (b.type==='free'?b.size+'K libres':extLabel) : ''}
+      </div>`;
+    }).join('');
+
+  } else if (fAllocType === 'bitmap') {
+    track.className = 'bitmap-track';
+    track.style.display = 'grid';
+    let cols = Math.min(26, Math.max(8, Math.ceil(Math.sqrt(fMemBlocks.length * 2.4))));
+    track.style.setProperty('--cols', cols);
+    track.innerHTML = fMemBlocks.map(b => {
+      let used = b.type !== 'free';
+      let bg = used ? (fColorMap[b.process]||'#4a7cf7') : '';
+      let title = used ? `Bloque ${b.id}: ocupado (1) — ${b.process}` : `Bloque ${b.id}: libre (0)`;
+      return `<div class="bit-cell ${used?'bit-used':'bit-free'}" style="${used?('background:'+bg+';'):''}" title="${title}">
+        <span>${used?'1':'0'}</span>
+      </div>`;
+    }).join('');
+
+  } else {
+    // enlazada / indexada / multinivel / fat — grilla de bloques fijos
+    track.className = 'block-track';
+    track.style.display = 'grid';
+    let cols = Math.min(20, Math.max(6, Math.ceil(Math.sqrt(fMemBlocks.length * 2))));
+    track.style.setProperty('--cols', cols);
+
+    track.innerHTML = fMemBlocks.map(b => {
+      let bg = b.type === 'free' ? 'var(--bg)' : fColorMap[b.process];
+      let roleClass = b.role==='master' ? 'blk-master' : b.role==='second' ? 'blk-second' : b.role==='index' ? 'blk-index' : '';
+      let extraClass = b.type === 'free' ? 'free' : roleClass;
+
+      let content = '', title = '';
+      if (b.type === 'allocated') {
+        if (b.role === 'master') {
+          content = `<span class="blk-tag">M</span><span class="blk-name">${b.process}</span>`;
+          title = `Índice maestro — ${b.process}`;
+        } else if (b.role === 'second') {
+          content = `<span class="blk-tag">S</span><span class="blk-name">${b.process}</span>`;
+          title = `Índice de 2º nivel — ${b.process} (padre: bloque ${b.parentId})`;
+        } else if (b.role === 'index') {
+          content = `<span class="blk-name">${b.process}</span><span class="blk-tag">IDX</span>`;
+          title = `Bloque índice — ${b.process}`;
+        } else {
+          let nextStr = (fAllocType==='enlazada' && b.nextBlockId) ? '→'+b.nextBlockId : '';
+          content = `<span class="blk-name">${b.process}</span><span class="blk-sub">${nextStr}</span>`;
+          title = `${b.process} (bloque ${b.id})`;
+        }
+      } else {
+        content = `<span class="blk-free-id">${b.id}</span>`;
+        title = 'Bloque libre '+b.id;
+      }
+
+      return `<div class="block-cell ${extraClass}" data-block-id="${b.id}" title="${title}">${content}</div>`;
+    }).join('');
+
+    renderFBlockLinks(track);
+  }
+  updateFMemStats();
+  renderFResidents();
+  renderFMemLegend();
+  renderFatPanel();
+}
+
+/* ── ENLACES VISUALES ENTRE BLOQUES ──
+   enlazada = cadena secuencial · indexada = índice→datos · multinivel = maestro→2ºnivel→datos
+   (fat y bitmap no dibujan enlaces: fat expone su cadena en la tabla FAT; bitmap es contiguo) */
+function renderFBlockLinks(track) {
+  if (fAllocType !== 'enlazada' && fAllocType !== 'indexada' && fAllocType !== 'multinivel') return;
+
+  const cellCenter = (id) => {
+    const el = track.querySelector(`.block-cell[data-block-id="${id}"]`);
+    if (!el) return null;
+    return { x: el.offsetLeft + el.offsetWidth / 2, y: el.offsetTop + el.offsetHeight / 2 };
+  };
+  const line = (a,c,color,dash,w) => a && c
+    ? `<line x1="${a.x}" y1="${a.y}" x2="${c.x}" y2="${c.y}" stroke="${color}" stroke-width="${w}" ${dash?`stroke-dasharray="${dash}"`:''} opacity="0.9"/>` : '';
+
+  let byProc = {};
+  fMemBlocks.forEach(b => {
+    if (b.type === 'allocated') (byProc[b.process] = byProc[b.process] || []).push(b);
+  });
+
+  let lines = '';
+  Object.keys(byProc).forEach(name => {
+    const color = fColorMap[name] || '#4a7cf7';
+    const blocks = byProc[name];
+    if (fAllocType === 'enlazada') {
+      blocks.forEach(b => { if (b.nextBlockId) lines += line(cellCenter(b.id), cellCenter(b.nextBlockId), color, '4,3', 2); });
+
+    } else if (fAllocType === 'indexada') {
+      const idxBlock = blocks.find(b => b.role === 'index');
+      if (idxBlock) {
+        const idxC = cellCenter(idxBlock.id);
+        blocks.filter(b => b.role !== 'index').forEach(b => { lines += line(idxC, cellCenter(b.id), color, '2,2', 1.4); });
+      }
+
+    } else if (fAllocType === 'multinivel') {
+      const master = blocks.find(b => b.role === 'master');
+      const seconds = blocks.filter(b => b.role === 'second');
+      if (master) {
+        const mC = cellCenter(master.id);
+        seconds.forEach(s => { lines += line(mC, cellCenter(s.id), color, '', 2.2); });
+      }
+      seconds.forEach(s => {
+        const sC = cellCenter(s.id);
+        blocks.filter(b => b.role === 'data' && b.parentId === s.id).forEach(d => { lines += line(sC, cellCenter(d.id), color, '2,2', 1.2); });
+      });
+    }
+  });
+
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('class', 'block-links');
+  svg.style.width  = track.scrollWidth + 'px';
+  svg.style.height = track.scrollHeight + 'px';
+  svg.innerHTML = lines;
+  track.appendChild(svg);
+}
+
+/* ── LEYENDA DE COLORES POR PROCESO EN RAM ── */
+function renderFMemLegend() {
+  const el = document.getElementById('fMemLegend');
+  if (!el) return;
+  let names = [...new Set(fMemBlocks.filter(b => b.type === 'allocated').map(b => b.process))];
+  if (!names.length) { el.innerHTML = ''; return; }
+  el.innerHTML = names.map(name => `
+    <span style="display:inline-flex;align-items:center;gap:3px;color:${fColorMap[name]||'#4a7cf7'};font-weight:700;">
+      <span style="width:9px;height:9px;border-radius:2px;background:${fColorMap[name]||'#4a7cf7'};display:inline-block;"></span>${name}
+    </span>`).join('');
+}
+
+/* ── TABLA FAT — sólo visible en modo FAT; reconstruye la cadena de cada
+   proceso a partir de nextBlockId (idéntico modelo que enlazada, pero
+   expuesto como tabla central en vez de punteros dentro del bloque) ── */
+function renderFatPanel() {
+  const card = document.getElementById('fFatCard');
+  if (!card) return;
+  if (fAllocType !== 'fat') { card.style.display = 'none'; return; }
+  card.style.display = '';
+  document.getElementById('fFatBadge').textContent = fMemBlocks.length + ' entradas';
+  document.getElementById('fFatBody').innerHTML = fMemBlocks.map(b => {
+    let procCell = b.type === 'allocated'
+      ? `<span style="background:${fColorMap[b.process]};color:#fff;padding:1px 7px;border-radius:3px;font-weight:700;">${b.process}</span>`
+      : '<span style="color:var(--text-soft)">—</span>';
+    let nextCell = b.type === 'allocated' ? (b.nextBlockId ? b.nextBlockId : 'FIN') : 'LIBRE';
+    return `<tr><td style="font-family:var(--font-mono)">${b.id}</td><td>${procCell}</td>
+      <td style="font-family:var(--font-mono);color:${b.type==='allocated'?'var(--text)':'var(--text-soft)'}">${nextCell}</td></tr>`;
+  }).join('');
+}
+
+function updateFMemStats() {
+  const isByteGranular = (fAllocType === 'contigua' || fAllocType === 'extension');
+  let used = 0;
+  if (isByteGranular) {
+    used = fMemBlocks.filter(b=>b.type==='allocated').reduce((a,b)=>a+b.size,0);
+  } else {
+    used = fMemBlocks.filter(b=>b.type==='allocated').length * fBlockSize;
+  }
+  let free = fMemTotal - used;
+  let pct  = fMemTotal > 0 ? (used/fMemTotal*100).toFixed(1) : 0;
+  document.getElementById('fm-used').textContent = used;
+  document.getElementById('fm-free').textContent = free;
+  document.getElementById('fm-fill-ram').style.width = pct+'%';
+  document.getElementById('fm-pct-ram').textContent  = pct+'%';
+
+  let freeSegs = fMemBlocks.filter(b=>b.type==='free');
+  document.getElementById('fFreeCount').textContent = freeSegs.length;
+  if (isByteGranular) {
+    document.getElementById('fFreeList').innerHTML = freeSegs.map(b=>`<div>• Base: ${b.start}KB | Tam: ${b.size}KB</div>`).join('');
+  } else {
+    document.getElementById('fFreeList').innerHTML = freeSegs.map(b=>`<div>• Bloque ${b.id} (${fBlockSize}KB)</div>`).join('');
+  }
+
+  let inRam = fProcs.filter(p=>p.memStart!==null && p.state !== 'done').length;
+  document.getElementById('fq-ram').textContent = inRam;
+}
+
+function renderFResidents() {
+  const el = document.getElementById('fResidentList');
+  let inRamProcs = fProcs.filter(p=>p.memStart!==null && p.state !== 'done');
+  if(!inRamProcs.length){ el.innerHTML='<div style="text-align:center;color:var(--text-soft);font-size:10px;padding:10px;">RAM vacía</div>'; return; }
+  let currentExec = getCurrentExec();
+  el.innerHTML = inRamProcs.map(p=>`
+    <div class="resident-row ${p.name===currentExec?'executing':''}">
+      <span style="background:${p.color};color:#fff;padding:1px 7px;border-radius:3px;font-size:9px;font-weight:800;font-family:var(--font-mono);">${p.name}</span>
+      <span style="color:var(--text-soft);font-size:9px;font-family:var(--font-mono);">Cargado en: t=${p.memStart}ut</span>
+      <span style="color:var(--teal);font-size:9px;">${p.memSize}KB</span>
+    </div>`).join('');
+}
+
+function getCurrentExec() {
+  return (currentRunningProc) ? currentRunningProc.name : null;
+}
+
+/* ── RENDER STATE TABLE ── */
+function renderFStateTable() {
+  const tbody = document.getElementById('fTableBody');
+  if(!fProcs.length){
+    tbody.innerHTML='<tr><td colspan="10" style="text-align:center;color:var(--text-soft);padding:20px;">Sin datos.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = fProcs.map(p => {
+    let stateColor = {
+      'pending':'var(--text-soft)', 'ready':'var(--blue)',
+      'executing':'var(--green)', 'in-ram':'var(--teal)',
+      'done':'var(--amber)', 'error':'var(--red)'
+    }[p.state] || 'var(--text-soft)';
+    let stateLabel = {
+      'pending':'Espera de RAM','ready':'Listo (en RAM)','executing':'Ejecutando',
+      'in-ram':'En RAM','done':'Terminado','error':'RAM insuficiente'
+    }[p.state] || p.state;
+    let ramState = p.memStart!==null ? `<span style="color:var(--teal)">${p.memSize}KB</span>` : `<span style="color:var(--text-soft)">—</span>`;
+    return `<tr>
+      <td><span style="background:${p.color};color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:800;">${p.name}</span></td>
+      <td style="font-family:var(--font-mono)">${p.arrival}</td>
+      <td style="font-family:var(--font-mono)">${p.burst}</td>
+      <td style="font-family:var(--font-mono)">${p.priority}</td>
+      <td style="font-family:var(--font-mono)">${p.memSize}</td>
+      <td style="color:${stateColor};font-weight:700;font-size:11px;">${stateLabel}</td>
+      <td>${ramState}</td>
+      <td style="font-family:var(--font-mono)">${p.startTime!==null?p.startTime+'ut':'—'}</td>
+      <td style="font-family:var(--font-mono)">${p.endTime!==null?p.endTime+'ut':'—'}</td>
+      <td style="font-family:var(--font-mono);color:var(--amber)">${p.waitTime!==null?p.waitTime+'ut':'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+/* ── BARCODE ── */
+function renderFBarcodeDynamic(step) {
+  const track = document.getElementById('fBarcodeTrack');
+  if(!fDynamicTimeline.length) return;
+  let total = Math.max(step, 1);
+  let html  = '';
+  fDynamicTimeline.forEach(seg => {
+    let renderEnd = Math.min(seg.end, step);
+    let duration = renderEnd - seg.start;
+    if(duration > 0) {
+      let pct = (duration / total * 100).toFixed(2);
+      let bg = seg.name==='IDLE' ? '#1a1f2e' : fColorMap[seg.name];
+      html += `<div class="bc-seg" style="width:${pct}%;background:${bg};" title="${seg.name}: ${seg.start}ut - ${seg.end}ut">
+        ${parseFloat(pct)>4?seg.name:''}
+      </div>`;
+    }
+  });
+  track.innerHTML = html || '<div style="flex:1;background:var(--surface);"></div>';
+  document.getElementById('fTimelineLabel').textContent = `${step} ut`;
+}
+
+/* ── UPDATE CIRCULAR GAUGES ── */
+function updateGauges() {
+  const procRing = document.getElementById('fGaugeProcRing');
+  const ramRing  = document.getElementById('fGaugeRamRing');
+  const procNum  = document.getElementById('fGaugeProcNum');
+  const ramNum   = document.getElementById('fGaugeRamNum');
+
+  const circ = 144.51; // Circunferencia del anillo r=23
+
+  // 1. Progreso de Simulación (Procesos resueltos / Total)
+  // "Resuelto" = terminado exitosamente o descartado por RAM insuficiente,
+  // así el anillo siempre puede llegar al 100% al cerrar la simulación.
+  const total    = fProcs.length;
+  const resolved = fProcs.filter(p => p.state === 'done' || p.state === 'error').length;
+  const procPct  = total > 0 ? (resolved / total) * 100 : 0;
+
+  if (procRing && procNum) {
+    let offset = circ - (procPct / 100) * circ;
+    procRing.style.strokeDashoffset = offset;
+    procNum.textContent = Math.round(procPct) + '%';
+  }
+
+  // 2. Porcentaje de RAM Utilizada
+  let used = 0;
+  if (fAllocType === 'contigua' || fAllocType === 'extension') {
+    used = fMemBlocks.filter(b=>b.type==='allocated').reduce((a,b)=>a+b.size,0);
+  } else {
+    used = fMemBlocks.filter(b=>b.type==='allocated').length * fBlockSize;
+  }
+  const ramPct = fMemTotal > 0 ? (used / fMemTotal) * 100 : 0;
+
+  if (ramRing && ramNum) {
+    let offset = circ - (ramPct / 100) * circ;
+    ramRing.style.strokeDashoffset = offset;
+    ramNum.textContent = Math.round(ramPct) + '%';
+  }
+}
+
+/* ── DISPATCHER DE PLANIFICACIÓN DINÁMICO ── */
+function selectNextProcessDynamic(t) {
+  // Solo consideramos procesos que ya están cargados exitosamente en la RAM
+  let eligible = fProcs.filter(p => p.memStart !== null && p.remaining > 0);
+  if (eligible.length === 0) {
+    currentRunningProc = null;
+    return null;
+  }
+
+  if (fPolicy === 'FCFS') {
+    // Primero el que llegó antes a la cola de listos (su memStart)
+    eligible.sort((a,b) => a.memStart - b.memStart || a.arrival - b.arrival || a.name.localeCompare(b.name));
+    return eligible[0];
+  }
+
+  if (fPolicy === 'SJF') {
+    // Si ya hay uno ejecutándose y no es apropiativo, mantenerlo
+    if (currentRunningProc && currentRunningProc.remaining > 0 && currentRunningProc.state === 'executing') {
+      return currentRunningProc;
+    }
+    // De lo contrario, elegir el de menor ráfaga total
+    eligible.sort((a,b) => a.burst - b.burst || a.arrival - b.arrival);
+    return eligible[0];
+  }
+
+  if (fPolicy === 'SRT') {
+    // Apropiativo por tiempo restante menor
+    eligible.sort((a,b) => a.remaining - b.remaining || a.arrival - b.arrival);
+    return eligible[0];
+  }
+
+  if (fPolicy === 'PRIORITY') {
+    // No apropiativo por prioridad (números más bajos tienen mayor prioridad)
+    if (currentRunningProc && currentRunningProc.remaining > 0 && currentRunningProc.state === 'executing') {
+      return currentRunningProc;
+    }
+    eligible.sort((a,b) => a.priority - b.priority || a.arrival - b.arrival);
+    return eligible[0];
+  }
+
+  if (fPolicy === 'RR') {
+    // Añadir nuevos elegibles a la cola FIFO del Round Robin
+    eligible.forEach(p => {
+      if (!rrQueue.includes(p.name)) {
+        rrQueue.push(p.name);
+      }
+    });
+
+    // Limpiar cola de procesos que ya no están elegibles
+    rrQueue = rrQueue.filter(name => eligible.some(p => p.name === name));
+
+    if (rrQueue.length === 0) return null;
+
+    // Verificar quantum (Quantum = 3 ut)
+    if (currentRunningProc && rrQueue[0] === currentRunningProc.name && rrQuantumSpent < 3) {
+      return currentRunningProc;
+    } else {
+      if (currentRunningProc && rrQuantumSpent >= 3) {
+        // Fin de quantum: rotar cola
+        let completed = rrQueue.shift();
+        rrQueue.push(completed);
+        fLog('exec', `Quantum completado para ${currentRunningProc.name}`, `Cambio de contexto. Se rota al final de la cola.`);
+        contextSwitchesCount++;
+      }
+      rrQuantumSpent = 0;
+      let nextName = rrQueue[0];
+      return eligible.find(p => p.name === nextName);
+    }
+  }
+  return null;
+}
+
+/* ── SIMULATION ENGINE (REAL TICK-BY-TICK) ── */
+function fusionStart() {
+  if (!fProcs.length) return;
+  fusionInitMemory();
+
+  // Reset del estado dinámico
+  fProcs.forEach(p => {
+    p.remaining = p.burst;
+    p.state = 'pending';
+    p.memStart = null;
+    p.startTime = null;
+    p.endTime = null;
+    p.waitTime = null;
+  });
+
+  fDynamicTimeline = [];
+  rrQueue = [];
+  rrQuantumSpent = 0;
+  currentRunningProc = null;
+  contextSwitchesCount = 0;
+
+  // Marcar de antemano los procesos que JAMÁS podrán asignarse con la
+  // configuración actual (tamaño mayor a la capacidad máxima posible),
+  // para que la simulación pueda completarse al 100% en vez de quedarse
+  // esperando para siempre.
+  let unfeasible = [];
+  fProcs.forEach(p => {
+    if (!fIsRequestFeasible(p)) {
+      p.state = 'error';
+      p.remaining = 0;
+      unfeasible.push(p.name);
+    }
+  });
+
+  fSimStep   = 0;
+  fDoneCount = 0;
+  fSimRunning= true;
+  fSimPaused = false;
+
+  document.getElementById('fStartBtn').disabled = true;
+  document.getElementById('fPauseBtn').disabled = false;
+  document.getElementById('fStatus').textContent = 'Corriendo';
+  fSetConfigLocked(true);
+  clearFEventLog();
+  fLog('exec','Simulación integrada paso a paso iniciada','CPU: '+fPolicy+' | RAM: '+F_ALLOC_LABEL[fAllocType]+' ('+fMemTotal+'KB)');
+  if (unfeasible.length) {
+    fLog('err', `${unfeasible.length} proceso(s) exceden la capacidad máxima de RAM`,
+      unfeasible.join(', ') + ' — no podrán cargarse nunca con esta configuración y se marcan como descartados.');
+  }
+  fusionPulse();
+}
+
+function fusionPulse() {
+  if(!fSimRunning || fSimPaused) return;
+  const t = fSimStep;
+  document.getElementById('fClock').textContent = t+' ut';
+  document.getElementById('fProgress').textContent = fDoneCount+'/'+fProcs.length;
+
+  // — 1. LLEGADAS DE PROCESOS
+  // Los procesos que llegan pasan a la cola de "Espera de Memoria" si aún no se han asignado.
+  // Se excluyen 'error' y 'done' para no resucitar un proceso que (por alguna otra vía)
+  // ya hubiese sido resuelto antes de que el reloj alcance su tiempo de llegada.
+  fProcs.filter(p => p.arrival === t && p.state !== 'error' && p.state !== 'done').forEach(p => {
+    p.state = 'pending';
+    fLog('idle', `${p.name} llegó al sistema`, `Requiere ${p.memSize}KB · ráfaga ${p.burst}ut`);
+  });
+
+  // — 2. CARGA DINÁMICA DE RAM
+  // Intentar cargar todos los procesos pendientes que ya llegaron (arrival <= t).
+  // La condición arrival<=t es la que impide que un proceso "adivine" memoria y
+  // se ejecute antes de haber llegado formalmente al sistema.
+  fProcs.filter(p => p.state === 'pending' && p.memStart === null && p.arrival <= t).forEach(p => {
+    let ok = fTryAllocate(p);
+    if(ok){
+      p.state = 'ready';
+      p.memStart = t;
+      fLog('alloc',p.name+' cargado en RAM',`Bloques asignados. Memoria ocupada: ${p.memSize}KB`);
+    } else {
+      fLog('err',p.name+' en espera de memoria',`Insuficiente RAM libre para ${p.memSize}KB`);
+    }
+  });
+
+  // — 3. DESPACHADOR CPU (DECISIÓN DEL PLANIFICADOR)
+  let nextProc = selectNextProcessDynamic(t);
+
+  if (nextProc) {
+    if (nextProc.startTime === null) {
+      nextProc.startTime = t;
+    }
+
+    // Registrar Cambio de Contexto en el log
+    if (currentRunningProc && currentRunningProc.name !== nextProc.name) {
+      fLog('exec',`Cambio de contexto`,`${currentRunningProc.name} → ${nextProc.name}`);
+      contextSwitchesCount++;
+    }
+
+    currentRunningProc = nextProc;
+    nextProc.state = 'executing';
+    nextProc.remaining--;
+
+    if (fPolicy === 'RR') {
+      rrQuantumSpent++;
+    }
+
+    document.getElementById('fRunning').textContent = nextProc.name;
+    document.getElementById('fRunning').style.background = nextProc.color;
+    document.getElementById('fRunning').style.color = '#fff';
+
+    // Grabar en la Secuencia Dinámica de Línea de Tiempo
+    if (fDynamicTimeline.length > 0 && fDynamicTimeline[fDynamicTimeline.length - 1].name === nextProc.name) {
+      fDynamicTimeline[fDynamicTimeline.length - 1].end = t + 1;
+    } else {
+      fDynamicTimeline.push({ name: nextProc.name, start: t, end: t + 1 });
+    }
+
+    // — 4. DETECTAR TÉRMINO DEL PROCESO
+    if (nextProc.remaining === 0) {
+      nextProc.state = 'done';
+      nextProc.endTime = t + 1;
+      // Espera = Retorno - Ráfaga = (Fin - Llegada) - Ráfaga Original
+      nextProc.waitTime = Math.max(0, (nextProc.endTime - nextProc.arrival) - nextProc.burst);
+      fDoneCount++;
+
+      fLog('done',`${nextProc.name} terminado`,`Retorno: ${(nextProc.endTime - nextProc.arrival)}ut · Espera: ${nextProc.waitTime}ut`);
+
+      // LIBERACIÓN AUTOMÁTICA DE MEMORIA
+      fDeallocate(nextProc.name);
+      fLog('free',`RAM liberada de ${nextProc.name}`,`Espacio devuelto al pool de memoria libre.`);
+
+      if (fPolicy === 'RR') {
+        rrQuantumSpent = 0;
+      }
+      currentRunningProc = null;
+
+      // Intentar meter de inmediato un proceso pendiente que ahora sí quepa (y que ya haya llegado)
+      fProcs.filter(p => p.state === 'pending' && p.memStart === null && p.arrival <= t + 1).forEach(p => {
+        let ok = fTryAllocate(p);
+        if(ok){
+          p.state = 'ready';
+          p.memStart = t + 1;
+          fLog('alloc',p.name+' cargado en RAM (post-liberación)',`Asignados ${p.memSize}KB`);
+        }
+      });
+    }
+
+  } else {
+    // Estado IDLE (CPU Desocupado)
+    currentRunningProc = null;
+    document.getElementById('fRunning').textContent = 'IDLE';
+    document.getElementById('fRunning').style.background = 'var(--panel)';
+    document.getElementById('fRunning').style.color = 'var(--text-soft)';
+
+    if (fDynamicTimeline.length > 0 && fDynamicTimeline[fDynamicTimeline.length - 1].name === 'IDLE') {
+      fDynamicTimeline[fDynamicTimeline.length - 1].end = t + 1;
+    } else {
+      fDynamicTimeline.push({ name: 'IDLE', start: t, end: t + 1 });
+    }
+  }
+
+  // — 5. ACTUALIZAR ESTADOS DE OTROS RESIDENTES EN RAM (in-ram)
+  fProcs.forEach(p => {
+    if (p.state !== 'done' && p.state !== 'pending') {
+      if (p === currentRunningProc) {
+        p.state = 'executing';
+      } else if (p.memStart !== null) {
+        p.state = 'ready';
+      }
+    }
+  });
+
+  // — 6. RENDERIZADO Y AVANCE DE RELOJ
+  renderFMemMap();
+  renderFBarcodeDynamic(t + 1);
+  renderFStateTable();
+  updateFPipelineCounts(t);
+  updateGauges();
+
+  // Control de término general (los procesos "error" están descartados
+  // de antemano y cuentan como resueltos para poder cerrar la simulación)
+  const allFinished = fProcs.every(p => p.state === 'done' || p.state === 'error');
+  if (allFinished) {
+    fusionEnd();
+  } else if (fSimStep > 5000) {
+    // Salvaguarda: nunca debería alcanzarse si la factibilidad se validó bien,
+    // pero evita que la simulación quede corriendo indefinidamente.
+    fLog('err','Límite de seguridad alcanzado (5000 ut)','La simulación se detuvo para evitar un bucle indefinido.');
+    fusionEnd();
+  } else {
+    fSimStep++;
+    fSimTimer = setTimeout(fusionPulse, 1000 / fSpeed);
+  }
+}
+
+function updateFPipelineCounts(t) {
+  let ready    = fProcs.filter(p => p.memStart !== null && p.state !== 'done' && p !== currentRunningProc).length;
+  let exec     = currentRunningProc ? 1 : 0;
+  let done     = fProcs.filter(p => p.state==='done').length;
+  let pending  = fProcs.filter(p => p.memStart === null && p.state !== 'error');
+
+  document.getElementById('fq-ready').textContent = ready;
+  document.getElementById('fq-exec').textContent  = exec;
+  document.getElementById('fq-done').textContent  = done;
+  document.getElementById('fm-done').textContent  = done;
+
+  let pb = document.getElementById('fq-pending');
+  pb.innerHTML = pending.slice(0,20).map(p=>`
+    <span class="q-badge" style="background:${p.color}33;color:${p.color};border:1px solid ${p.color}55;">
+      ${p.name} @${p.arrival}ut
+    </span>`).join('') + (pending.length>20?`<span style="font-size:9px;color:var(--text-soft)">+${pending.length-20} más</span>`:'');
+}
+
+function fusionEnd() {
+  fSimRunning = false;
+  document.getElementById('fStartBtn').disabled = false;
+  document.getElementById('fPauseBtn').disabled = true;
+  document.getElementById('fStatus').textContent = 'Completado';
+  document.getElementById('fStatus').style.color = 'var(--green)';
+  fSetConfigLocked(false);
+  computeFMetrics();
+  let discarded = fProcs.filter(p => p.state === 'error').length;
+  fLog('done','Simulación completada',
+    discarded
+      ? `${fProcs.length - discarded} proceso(s) terminados. ${discarded} descartado(s) por RAM insuficiente.`
+      : 'Todos los procesos terminados y memoria liberada con éxito.');
+  renderFMemMap();
+  renderFStateTable();
+}
+
+function fusionPause() {
+  fSimPaused = !fSimPaused;
+  document.getElementById('fPauseBtn').textContent = fSimPaused ? 'Reanudar' : 'Pausar';
+  if(!fSimPaused) fusionPulse();
+}
+
+function fusionReset() {
+  clearTimeout(fSimTimer);
+  fSimRunning = false; fSimPaused = false;
+  fSimStep = 0; fDoneCount = 0;
+  rrQueue = [];
+  rrQuantumSpent = 0;
+  currentRunningProc = null;
+  contextSwitchesCount = 0;
+
+  fProcs.forEach(p => {
+    p.remaining=p.burst; p.state='pending';
+    p.memStart=null; p.startTime=null; p.endTime=null; p.waitTime=null;
+  });
+  fDynamicTimeline = [];
+  fMemBlocks= [];
+
+  document.getElementById('fClock').textContent = '0 ut';
+  document.getElementById('fRunning').textContent = '—';
+  document.getElementById('fRunning').style.background = 'var(--panel)';
+  document.getElementById('fRunning').style.color = 'var(--text-mid)';
+  document.getElementById('fStatus').textContent = 'Listo';
+  document.getElementById('fStatus').style.color = 'var(--amber)';
+  document.getElementById('fProgress').textContent = '0/0';
+  document.getElementById('fStartBtn').disabled = false;
+  document.getElementById('fPauseBtn').disabled = true;
+  document.getElementById('fPauseBtn').textContent = 'Pausar';
+  fSetConfigLocked(false);
+
+  document.getElementById('fBarcodeTrack').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;width:100%;color:var(--text-soft);font-size:11px;">Inicia la simulación para ver la secuencia de ejecución</div>';
+  document.getElementById('fMemTrack').innerHTML = '<div style="display:flex;align-items:center;justify-content:center;width:100%;color:var(--text-soft);font-size:11px;">Memoria sin inicializar</div>';
+  document.getElementById('fMemStatus').textContent = 'Sin init.';
+  document.getElementById('fResidentList').innerHTML = '<div style="text-align:center;color:var(--text-soft);font-size:10px;padding:10px;">RAM vacía</div>';
+  document.getElementById('fFreeList').innerHTML = '';
+  document.getElementById('fFreeCount').textContent = 0;
+
+  ['fm-total','fm-util','fm-wait','fm-return','fm-ctx','fm-done','fm-used','fm-free'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.textContent='—';
+  });
+  ['fq-ready','fq-ram','fq-exec','fq-done'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.textContent='0';
+  });
+  document.getElementById('fq-pending').innerHTML='';
+  document.getElementById('fm-fill-ram').style.width='0%';
+  document.getElementById('fm-pct-ram').textContent='0%';
+  document.getElementById('fFatBody').innerHTML='';
+  document.getElementById('fFatBadge').textContent='0 entradas';
+  document.getElementById('fFatCard').style.display = (fAllocType==='fat') ? '' : 'none';
+  document.getElementById('fMemHint').textContent = F_ALLOC_HINT[fAllocType] || '';
+
+  updateGauges();
+  renderFStateTable();
+  clearFEventLog();
+}
+
+function fusionSetSpeed(v) {
+  fSpeed = parseFloat(v);
+  document.getElementById('fSpeedVal').textContent = v+'x';
+}
+
+/* ── METRICS ── */
+function computeFMetrics() {
+  if(!fDynamicTimeline.length) return;
+  let total   = fSimStep;
+  let idle    = fDynamicTimeline.filter(s=>s.name==='IDLE').reduce((a,s)=>a+(s.end-s.start),0);
+  let util    = total > 0 ? (((total-idle)/total)*100).toFixed(1) : 0;
+  
+  let finished= fProcs.filter(p=>p.endTime!==null);
+  let avgWait = finished.length ? (finished.reduce((a,p)=>a+p.waitTime,0)/finished.length).toFixed(1) : '—';
+  let avgReturn= finished.length ? (finished.reduce((a,p)=>a+(p.endTime-p.arrival),0)/finished.length).toFixed(1) : '—';
+
+  document.getElementById('fm-total').textContent = total;
+  document.getElementById('fm-util').textContent  = util;
+  document.getElementById('fm-wait').textContent  = avgWait;
+  document.getElementById('fm-return').textContent= avgReturn;
+  document.getElementById('fm-ctx').textContent   = contextSwitchesCount;
+  document.getElementById('fm-done').textContent  = finished.length;
+}
+
+/* ── EVENT LOG ── */
+function fLog(type, msg, detail='') {
+  const log = document.getElementById('fEventLog');
+  let div = document.createElement('div');
+  div.className = 'ev '+type;
+  div.innerHTML = `<strong>${msg}</strong>${detail?`<div class="ev-detail">${detail}</div>`:''}`;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+function clearFEventLog() {
+  document.getElementById('fEventLog').innerHTML = '';
+}
+
+function fShowMsg(id, txt, type) {
+  let el = document.getElementById(id);
+  el.textContent = txt;
+  el.className = 'msg show msg-'+type;
+  setTimeout(()=>el.classList.remove('show'), 2500);
+}
+
+/* ── INIT ── */
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('fMemHint').textContent = F_ALLOC_HINT[fAllocType] || '';
+  fusionGenerate();
+  renderFStateTable();
+});
+</script>
+</body>
+</html>
