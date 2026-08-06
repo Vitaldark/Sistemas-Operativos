@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador de Gestión de Memoria y Planificación de CPU</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<!-- Separación de intereses: la presentación vive en css/styles.css -->
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">
+    <span class="brand-name">Gestión de Memoria &amp; Planificación de CPU</span>
+    <span class="brand-tag">7 métodos de asignación</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <span style="font-size:10px;color:var(--text-soft);">Simulación integrada de planificación de procesos y administración de memoria</span>
+  </div>
+  <div style="font-size:10px;color:var(--text-soft);font-family:var(--font-mono);">Sistemas Operativos · UNA Puno</div>
+</div>
+
+<div class="workspace">
+
+  <!-- ═══ SIDEBAR IZQUIERDO ═══ -->
+  <div class="sidebar">
+
+    <div class="section">
+      <div class="section-title">Algoritmo CPU</div>
+      <div class="policy-grid" id="fusionPolicyGrid">
+        <button class="policy-btn active" onclick="fusionSelectPolicy('FCFS',this)">FCFS</button>
+        <button class="policy-btn" onclick="fusionSelectPolicy('SJF',this)">SJF</button>
+        <button class="policy-btn" onclick="fusionSelectPolicy('SRT',this)">SRT</button>
+        <button class="policy-btn" onclick="fusionSelectPolicy('RR',this)">RR</button>
+        <button class="policy-btn" onclick="fusionSelectPolicy('PRIORITY',this)">PRIO</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Tipo de Asignación de Memoria</div>
+      <div class="alloc-grid" id="fusionAllocGrid">
+        <button class="alloc-btn active" id="fAllocContigua" onclick="fusionSelectAllocType('contigua',this)">Contigua</button>
+        <button class="alloc-btn" id="fAllocEnlazada" onclick="fusionSelectAllocType('enlazada',this)">Enlazada</button>
+        <button class="alloc-btn" id="fAllocIndexada" onclick="fusionSelectAllocType('indexada',this)">Indexada</button>
+        <button class="alloc-btn" id="fAllocMultinivel" onclick="fusionSelectAllocType('multinivel',this)">Indexada multinivel</button>
+        <button class="alloc-btn" id="fAllocFat" onclick="fusionSelectAllocType('fat',this)">FAT</button>
+        <button class="alloc-btn" id="fAllocExtension" onclick="fusionSelectAllocType('extension',this)">Por extensión</button>
+        <button class="alloc-btn" id="fAllocBitmap" onclick="fusionSelectAllocType('bitmap',this)">Mapa de bits</button>
+      </div>
+      <div class="info-mini" id="fAllocDesc" style="margin-top:6px;">Bloque único y contiguo por proceso. Usa el algoritmo de ajuste (First/Best/Worst Fit) o Buddy.</div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Algoritmo de Ajuste <span style="color:var(--text-soft);font-weight:400;text-transform:none;">(Contigua / Extensión)</span></div>
+      <div class="algo-grid" id="fAlgoGrid">
+        <button class="algo-btn active" id="fAlgoFirst" onclick="fusionSelectMemAlgo('first',this)">First Fit</button>
+        <button class="algo-btn" id="fAlgoBest" onclick="fusionSelectMemAlgo('best',this)">Best Fit</button>
+        <button class="algo-btn" id="fAlgoWorst" onclick="fusionSelectMemAlgo('worst',this)">Worst Fit</button>
+        <button class="algo-btn" id="fAlgoBuddy" onclick="fusionSelectMemAlgo('buddy',this)">Buddy</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Configuración de Memoria</div>
+      <label class="field-label">Capacidad RAM (KB)</label>
+      <input type="number" id="fMemTotal" value="2048" min="256" max="16384" step="256">
+      <label class="field-label" style="margin-top:6px;">Memoria por proceso (KB)</label>
+      <div class="field-row">
+        <div>
+          <span class="field-label">Mín</span>
+          <input type="number" id="fMemMin" value="64" min="16" max="512">
+        </div>
+        <div>
+          <span class="field-label">Máx</span>
+          <input type="number" id="fMemMax" value="256" min="32" max="1024">
+        </div>
+      </div>
+      <label class="field-label" style="margin-top:6px;">Tamaño de bloque (KB) <span style="color:var(--text-soft);font-weight:400;">— métodos por bloques fijos</span></label>
+      <input type="number" id="fBlockSize" value="64" min="8" max="512" step="8">
+      <div class="info-mini" style="margin-top:6px;">Índice de 2º nivel (Multinivel): 3 punteros a bloques de datos por cada bloque índice secundario.</div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Generación Masiva</div>
+      <div class="gen-section">
+        <label class="field-label">Cantidad de Procesos</label>
+        <input type="number" id="fProcCount" value="20" min="1" max="200">
+        <label class="field-label" style="margin-top:6px;">Ráfaga CPU (ut)</label>
+        <div class="field-row">
+          <div><span class="field-label">Mín</span><input type="number" id="fBurstMin" value="2" min="1"></div>
+          <div><span class="field-label">Máx</span><input type="number" id="fBurstMax" value="10" min="1"></div>
+        </div>
+        <label class="field-label" style="margin-top:6px;">Llegada máx. (ut)</label>
+        <input type="number" id="fArrivalMax" value="30" min="0">
+        <button class="btn primary" id="fGenerateBtn" style="width:100%;margin-top:8px;" onclick="fusionGenerate()">Generar procesos</button>
+      </div>
+    </div>
+
+    <div class="section" style="flex:1;display:flex;flex-direction:column;">
+      <div class="section-title">Cola de Procesos (<span id="fProcCount2">0</span>)</div>
+      <div class="proc-list" id="fProcList">
+        <div style="text-align:center;color:var(--text-soft);font-size:11px;padding:10px;">Sin procesos. Genera o agrega manualmente.</div>
+      </div>
+      <button class="btn danger" id="fClearBtn" style="width:100%;margin-top:6px;" onclick="fusionClear()">Limpiar todo</button>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Agregar Manual</div>
+      <input type="text" id="fPName" value="P0" placeholder="Nombre" style="margin-bottom:4px;">
+      <div class="field-row">
+        <div><span class="field-label">Llegada</span><input type="number" id="fArrival" value="0"></div>
+        <div><span class="field-label">Ráfaga CPU</span><input type="number" id="fBurst" value="4"></div>
+      </div>
+      <div class="field-row" style="margin-top:4px;">
+        <div><span class="field-label">Prioridad</span><input type="number" id="fPriority" value="1"></div>
+        <div><span class="field-label">Mem (KB)</span><input type="number" id="fMemSize" value="128"></div>
+      </div>
+      <button class="btn teal" id="fAddManualBtn" style="width:100%;margin-top:6px;" onclick="fusionAddManual()">+ Agregar</button>
+      <div id="fMsgProc" class="msg"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Control de Simulación</div>
+      <div class="btn-row">
+        <button class="btn primary" id="fStartBtn" onclick="fusionStart()">Iniciar</button>
+        <button class="btn" id="fPauseBtn" disabled onclick="fusionPause()">Pausar</button>
+      </div>
+      <button class="btn danger" style="width:100%;margin-top:4px;" onclick="fusionReset()">Reiniciar</button>
+      <div style="margin-top:8px;">
+        <label class="field-label">Velocidad: <span id="fSpeedVal">1x</span></label>
+        <input type="range" min="0.5" max="10" step="0.5" value="1" onchange="fusionSetSpeed(this.value)">
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══ CONTENIDO CENTRAL ═══ -->
+  <div class="main">
+
+    <!-- STATUS ROW -->
+    <div style="display:flex;gap:10px;">
+      <div class="status-box" style="flex:1;">
+        <span style="font-size:10px;color:var(--text-soft);">CPU TICK</span>
+        <span class="chip" style="background:var(--blue-lt);color:var(--blue);" id="fClock">0 ut</span>
+      </div>
+      <div class="status-box" style="flex:1;">
+        <span style="font-size:10px;color:var(--text-soft);">EJECUTANDO</span>
+        <span class="chip" id="fRunning" style="background:var(--panel);color:var(--text-mid);">—</span>
+      </div>
+      <div class="status-box" style="flex:1;">
+        <span style="font-size:10px;color:var(--text-soft);">ESTADO</span>
+        <span id="fStatus" style="font-size:11px;font-weight:700;color:var(--amber);">Listo</span>
+      </div>
+      <div class="status-box" style="flex:1;">
+        <span style="font-size:10px;color:var(--text-soft);">PROGRESO</span>
+        <span id="fProgress" style="font-size:11px;font-weight:700;font-family:var(--font-mono);color:var(--green);">0/0</span>
+      </div>
+    </div>
+
+    <!-- GAUGES CIRCULARES -->
+    <div class="gauge-row">
+      <div class="gauge-box">
+        <svg width="52" height="52" viewBox="0 0 54 54">
+          <circle cx="27" cy="27" r="23" fill="none" stroke="var(--border)" stroke-width="6"/>
+          <circle id="fGaugeProcRing" cx="27" cy="27" r="23" fill="none" stroke="var(--purple)" stroke-width="6"
+                  stroke-linecap="round" stroke-dasharray="144.51" stroke-dashoffset="144.51"
+                  transform="rotate(-90 27 27)" style="transition:stroke-dashoffset .4s ease;"/>
+        </svg>
+        <div>
+          <div class="gauge-label">Progreso Simulación</div>
+          <div class="gauge-num" id="fGaugeProcNum" style="color:var(--purple);">0%</div>
+        </div>
+      </div>
+      <div class="gauge-box">
+        <svg width="52" height="52" viewBox="0 0 54 54">
+          <circle cx="27" cy="27" r="23" fill="none" stroke="var(--border)" stroke-width="6"/>
+          <circle id="fGaugeRamRing" cx="27" cy="27" r="23" fill="none" stroke="var(--teal)" stroke-width="6"
+                  stroke-linecap="round" stroke-dasharray="144.51" stroke-dashoffset="144.51"
+                  transform="rotate(-90 27 27)" style="transition:stroke-dashoffset .4s ease;"/>
+        </svg>
+        <div>
+          <div class="gauge-label">RAM Utilizada</div>
+          <div class="gauge-num" id="fGaugeRamNum" style="color:var(--teal);">0%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROGRESS BAR -->
+    <div class="viz-card">
+      <div class="viz-header">
+        <span>Secuencia de ejecución de CPU</span>
+        <span class="viz-badge" id="fTimelineLabel">—</span>
+      </div>
+      <div class="barcode-wrap" id="fBarcodeWrap">
+        <div class="barcode-track" id="fBarcodeTrack">
+          <div style="display:flex;align-items:center;justify-content:center;width:100%;color:var(--text-soft);font-size:11px;">Inicia la simulación para ver la secuencia de ejecución</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MEMORY MAP -->
+    <div class="viz-card">
+      <div class="viz-header teal-h">
+        <span>Mapa de memoria RAM — <span id="fMemTotalLabel">2048</span> KB</span>
+        <span class="viz-badge" id="fMemStatus">Sin init.</span>
+      </div>
+      <div style="padding:12px 14px;">
+        <div class="mem-track" id="fMemTrack">
+          <div style="display:flex;align-items:center;justify-content:center;width:100%;color:var(--text-soft);font-size:11px;">Memoria sin inicializar</div>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:12px;font-size:10px;">
+          <span style="color:var(--text-soft);">
+            <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:repeating-linear-gradient(45deg,var(--bg),var(--bg) 3px,var(--panel) 3px,var(--panel) 6px);margin-right:4px;vertical-align:middle;"></span>Libre
+          </span>
+          <span id="fMemLegend" style="display:flex;gap:8px;flex-wrap:wrap;"></span>
+        </div>
+        <div class="mem-hint" id="fMemHint"></div>
+      </div>
+    </div>
+
+    <!-- TABLA FAT (solo visible en modo FAT) -->
+    <div class="viz-card" id="fFatCard" style="display:none;">
+      <div class="viz-header fat-h">
+        <span>Tabla de Asignación de Archivos (FAT)</span>
+        <span class="viz-badge" id="fFatBadge">0 entradas</span>
+      </div>
+      <div style="padding:8px 14px 12px;max-height:170px;overflow:auto;">
+        <table class="fat-table" id="fFatTable">
+          <thead><tr><th>Bloque</th><th>Proceso</th><th>Puntero siguiente</th></tr></thead>
+          <tbody id="fFatBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PROCESS STATE TABLE -->
+    <div class="viz-card grow">
+      <div class="viz-header purple-h">
+        <span>Estado integrado de procesos (CPU + RAM)</span>
+        <span class="viz-badge" id="fTableBadge">0 procesos</span>
+      </div>
+      <div style="overflow:auto;flex:1;min-height:0;">
+        <table class="ptable" id="fStateTable">
+          <thead>
+            <tr>
+              <th>Proceso</th>
+              <th>Llegada</th>
+              <th>Ráfaga</th>
+              <th>Prio</th>
+              <th>Mem (KB)</th>
+              <th>Estado CPU</th>
+              <th>Estado RAM</th>
+              <th>Inicio CPU</th>
+              <th>Fin CPU</th>
+              <th>Espera</th>
+            </tr>
+          </thead>
+          <tbody id="fTableBody">
+            <tr><td colspan="10" style="text-align:center;color:var(--text-soft);padding:20px;">Sin datos. Genera procesos y ejecuta la simulación.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══ SIDEBAR DERECHO ═══ -->
+  <div class="sidebar-right">
+
+    <!-- MÉTRICAS CPU -->
+    <div class="section">
+      <div class="section-title">Métricas CPU</div>
+      <div class="metrics-grid">
+        <div class="metric-box">
+          <div class="m-label">Tiempo Total</div>
+          <div class="m-value" id="fm-total">—</div>
+          <div class="m-unit">ut</div>
+        </div>
+        <div class="metric-box green-b">
+          <div class="m-label">Utilización</div>
+          <div class="m-value green" id="fm-util">—</div>
+          <div class="m-unit">%</div>
+        </div>
+        <div class="metric-box teal-b">
+          <div class="m-label">Espera Prom.</div>
+          <div class="m-value teal sm" id="fm-wait">—</div>
+          <div class="m-unit">ut</div>
+        </div>
+        <div class="metric-box amber-b">
+          <div class="m-label">Retorno Prom.</div>
+          <div class="m-value amber sm" id="fm-return">—</div>
+          <div class="m-unit">ut</div>
+        </div>
+        <div class="metric-box">
+          <div class="m-label">Ctx Switches</div>
+          <div class="m-value sm" id="fm-ctx">—</div>
+        </div>
+        <div class="metric-box purple-b">
+          <div class="m-label">Terminados</div>
+          <div class="m-value sm" style="color:var(--purple);" id="fm-done">0</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MÉTRICAS RAM -->
+    <div class="section">
+      <div class="section-title">Métricas RAM</div>
+      <div class="metrics-grid">
+        <div class="metric-box teal-b">
+          <div class="m-label">Usado</div>
+          <div class="m-value teal sm" id="fm-used">—</div>
+          <div class="m-unit">KB</div>
+        </div>
+        <div class="metric-box green-b">
+          <div class="m-label">Libre</div>
+          <div class="m-value green sm" id="fm-free">—</div>
+          <div class="m-unit">KB</div>
+        </div>
+      </div>
+      <div class="util-row">
+        <span class="util-lbl">RAM</span>
+        <div class="util-track"><div class="util-fill" id="fm-fill-ram" style="background:var(--teal);"></div></div>
+        <span class="util-pct" id="fm-pct-ram">0%</span>
+      </div>
+    </div>
+
+    <!-- PIPELINE STAGES -->
+    <div class="section">
+      <div class="section-title">Colas por Estado</div>
+      <div class="pipeline">
+        <div class="stage" style="border-color:var(--blue);">
+          <div style="color:var(--blue);font-size:9px;">LISTO</div>
+          <div class="stage-val" style="color:var(--blue);" id="fq-ready">0</div>
+        </div>
+        <div class="stage" style="border-color:var(--teal);">
+          <div style="color:var(--teal);font-size:9px;">EN RAM</div>
+          <div class="stage-val" style="color:var(--teal);" id="fq-ram">0</div>
+        </div>
+        <div class="stage" style="border-color:var(--green);">
+          <div style="color:var(--green);font-size:9px;">EXEC</div>
+          <div class="stage-val" style="color:var(--green);" id="fq-exec">0</div>
+        </div>
+        <div class="stage" style="border-color:var(--amber);">
+          <div style="color:var(--amber);font-size:9px;">TÉRMINO</div>
+          <div class="stage-val" style="color:var(--amber);" id="fq-done">0</div>
+        </div>
+      </div>
+      <div style="margin-top:8px;">
+        <div class="section-title" style="margin-bottom:4px;">Pendientes de Llegar</div>
+        <div class="queue-badges" id="fq-pending"></div>
+      </div>
+    </div>
+
+    <!-- RESIDENTES EN RAM -->
+    <div class="section">
+      <div class="section-title">Residentes Activos en RAM</div>
+      <div id="fResidentList" style="max-height:130px;overflow-y:auto;">
+        <div style="text-align:center;color:var(--text-soft);font-size:10px;padding:10px;">RAM vacía</div>
+      </div>
+    </div>
+
+    <!-- FRAGMENTOS LIBRES -->
+    <div class="section">
+      <div class="section-title">Fragmentos Libres (<span id="fFreeCount">0</span>)</div>
+      <div id="fFreeList" style="max-height:80px;overflow-y:auto;font-family:var(--font-mono);font-size:10px;color:var(--text-mid);"></div>
+    </div>
+
+    <!-- EVENT LOG -->
+    <div class="section" style="flex:1;display:flex;flex-direction:column;min-height:180px;">
+      <div class="section-title">Registro de Eventos</div>
+      <div class="event-log" id="fEventLog">
+        <div class="ev idle">Sistema listo. Configura y ejecuta la simulación fusionada.</div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════
+     Separación de intereses (JS): cada módulo tiene una única
+     responsabilidad. El orden de carga importa: state.js debe
+     ir primero (declara el estado global que los demás usan)
+     y main.js debe ir último (arranca la aplicación una vez
+     todo lo demás está definido).
+     ═══════════════════════════════════════════════════════ -->
+<script src="js/state.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/memoryAllocator.js"></script>
+<script src="js/scheduler.js"></script>
+<script src="js/render.js"></script>
+<script src="js/processManager.js"></script>
+<script src="js/simulation.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
